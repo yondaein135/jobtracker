@@ -1,3 +1,21 @@
+# Database & Local Data (CRITICAL: Do not commit personal job data)
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Dependencies & Build Artifacts
+frontend/node_modules/
+frontend/dist/
+backend/bin/
+backend/tmp/
+
+# Environment & OS
+.env
+.DS_Store
+
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
@@ -24,9 +42,6 @@ profile.cov
 # Go workspace file
 go.work
 go.work.sum
-
-# env file
-.env
 
 # Editor/IDE
 # .idea/
