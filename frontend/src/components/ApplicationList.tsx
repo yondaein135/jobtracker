@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { api } from '../api/client'
 import { durationBetween, formatDate, formatDateTime, relativeTime, toLocalInputValue } from '../lib/format'
 import { STATUSES, STATUS_META, type Application, type ApplicationDetail, type Status } from '../types'
@@ -45,6 +45,11 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
   const [busy, setBusy] = useState<Set<number>>(new Set())
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  // Identifies which filter the currently shown rows belong to; changing it remounts
+  // the rows so the whole list re-reveals together (refreshes keep it stable).
+  const [listKey, setListKey] = useState('')
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [chipIndicator, setChipIndicator] = useState({ x: 0, y: 0, w: 0, h: 0, ready: false })
 
   // Debounce text search.
   useEffect(() => {
@@ -73,6 +78,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
       .listApplications({ status: statusFilter, search: debouncedSearch }, ctrl.signal)
       .then((data) => {
         setApps(data)
+        setListKey(`${statusFilter}|${debouncedSearch}`)
         setError(null)
       })
       .catch((err: unknown) => {
@@ -161,6 +167,30 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
     [counts, total],
   )
 
+  // Slide the active-filter indicator to the selected chip.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = chipRefs.current[statusFilter || 'ALL']
+      if (el) {
+        setChipIndicator((p) => ({
+          x: el.offsetLeft,
+          y: el.offsetTop,
+          w: el.offsetWidth,
+          h: el.offsetHeight,
+          ready: p.ready || p.w > 0,
+        }))
+      }
+    }
+    measure()
+    const raf = requestAnimationFrame(() => setChipIndicator((p) => ({ ...p, ready: true })))
+    window.addEventListener('resize', measure)
+    document.fonts?.ready.then(measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', measure)
+    }
+  }, [statusFilter, chips])
+
   return (
     <section className="space-y-6" aria-labelledby="applications-heading">
       <h2 id="applications-heading" className="sr-only">
@@ -207,15 +237,29 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
 
           {/* Unboxed Status Filter Strip */}
           <div
-            className="-mx-1 flex gap-1 overflow-x-auto px-1 py-0.5 lg:flex-wrap lg:overflow-visible"
+            className="relative -mx-1 flex gap-1 overflow-x-auto px-1 py-0.5 lg:flex-wrap lg:overflow-visible"
             role="tablist"
             aria-label="Filter by status"
           >
+            <span
+              className="filter-indicator"
+              style={{
+                width: chipIndicator.w,
+                height: chipIndicator.h,
+                transform: `translate(${chipIndicator.x}px, ${chipIndicator.y}px)`,
+                transitionDuration: chipIndicator.ready ? undefined : '0ms',
+                opacity: chipIndicator.w > 0 ? 1 : 0,
+              }}
+              aria-hidden
+            />
             {chips.map((c) => {
               const active = statusFilter === c.key
               return (
                 <button
                   key={c.key || 'ALL'}
+                  ref={(el) => {
+                    chipRefs.current[c.key || 'ALL'] = el
+                  }}
                   id={`filter-${c.key || 'ALL'}`}
                   type="button"
                   role="tab"
@@ -298,11 +342,11 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                   <th className="py-2.5 pr-2 text-right" aria-label="Actions" />
                 </tr>
               </thead>
-              <tbody className={`transition-opacity duration-300 ${loading ? 'opacity-60' : ''}`}>
+              <tbody key={listKey} className={`transition-opacity duration-300 ${loading ? 'opacity-60' : ''}`}>
                 {apps.map((app, idx) => {
                   const expanded = expandedId === app.id
                   return (
-                    <Fragment key={app.id}>
+                    <Fragment key={`${listKey}-${app.id}`}>
                       <tr
                         className={`reveal-row group border-b border-[rgba(15,20,25,0.07)] transition-colors duration-300 ${
                           expanded ? 'bg-slate-100/70 shadow-[inset_2px_0_0_#0088cc]' : 'hover:bg-slate-50/80'

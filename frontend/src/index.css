@@ -465,13 +465,29 @@
     color: var(--color-ink-primary);
     background-color: rgba(15, 20, 25, 0.03);
   }
-  .filter-item-active {
-    background-color: var(--color-ink-slate);
-    color: #ffffff;
-    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+  .filter-item {
+    position: relative;
+    z-index: 1;
   }
+  .filter-item-active,
   .filter-item-active:hover {
-    background-color: var(--color-ink-primary);
+    background-color: transparent;
     color: #ffffff;
+  }
+
+  /* Sliding active-filter fill (shares motion with the view tabs) */
+  .filter-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    background-color: var(--color-ink-slate);
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+    transition:
+      transform var(--duration-base) var(--ease-smooth),
+      width var(--duration-base) var(--ease-smooth),
+      height var(--duration-base) var(--ease-smooth),
+      opacity var(--duration-fast) var(--ease-smooth);
+    pointer-events: none;
   }
 }
