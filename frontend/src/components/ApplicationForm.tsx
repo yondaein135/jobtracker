@@ -1,5 +1,5 @@
 import { Bookmark, Building2, FileText, Link2, Loader2, MapPin, Send, StickyNote, X } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import type { Application, ApplicationDetail, InitialStatus } from '../types'
 
@@ -43,7 +43,7 @@ function isValidUrl(v: string) {
   }
 }
 
-/** Quick-add / edit modal for an application. */
+/** Clinical horizon record entry/edit modal with elegant sans-serif typography. */
 export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationFormProps) {
   const isEdit = mode.kind === 'edit'
   const [form, setForm] = useState<FormState>(() =>
@@ -83,8 +83,8 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
   const errors = {
-    company_name: !form.company_name.trim() ? 'Company is required' : '',
-    role_title: !form.role_title.trim() ? 'Role is required' : '',
+    company_name: !form.company_name.trim() ? 'Company entity name is required' : '',
+    role_title: !form.role_title.trim() ? 'Role title is required' : '',
     job_url: !isValidUrl(form.job_url.trim()) ? 'Must be a valid http(s) URL' : '',
   }
   const hasErrors = Object.values(errors).some(Boolean)
@@ -111,7 +111,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
           : await api.createApplication({ ...payload, initial_status: form.initial_status })
       onSaved(saved, !isEdit)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : 'Failed to commit record')
       setSaving(false)
     }
   }
@@ -120,7 +120,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
 
   return (
     <div
-      className="animate-fade-in fixed inset-0 z-40 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs font-sans"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       role="presentation"
     >
@@ -132,64 +132,95 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${uid}-title`}
-        className="animate-slide-up relative max-h-[94vh] w-full max-w-xl overflow-y-auto rounded-t-3xl border border-white/10 bg-ink-900/95 shadow-[0_30px_120px_-20px_rgb(99_102_241/0.35)] sm:rounded-3xl"
+        className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto border border-slate-300 bg-white p-6 shadow-2xl text-slate-800"
         noValidate
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-violet-400/60 to-transparent" />
+        {/* Exterior Corner L-Brackets */}
+        <span className="corner-l-bracket-tl" />
+        <span className="corner-l-bracket-tr" />
+        <span className="corner-l-bracket-bl" />
+        <span className="corner-l-bracket-br" />
 
-        <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-4 sm:px-7">
-          <div>
-            <h2 id={`${uid}-title`} className="font-display text-xl font-semibold text-white">
-              {isEdit ? 'Edit application' : 'New application'}
-            </h2>
-            <p className="mt-1 text-sm text-slate-400">
-              {isEdit ? 'Update the details for this role.' : 'Track a role you applied to or want to apply to.'}
-            </p>
+        {/* Modal Header */}
+        <header className="mb-4">
+          <div className="flex items-center justify-between">
+            <span className="font-sans text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+              {isEdit ? 'RECORD_OPS // MODIFY' : 'RECORD_OPS // INITIALIZE'}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-clinical-icon size-7 text-slate-400 hover:text-slate-900"
+              aria-label="Close dialog"
+            >
+              <X className="size-4" />
+            </button>
           </div>
-          <button type="button" onClick={onClose} className="btn-icon -mt-1 -mr-2" aria-label="Close" id="close-form">
-            <X className="size-5" />
-          </button>
+          <h2 id={`${uid}-title`} className="mt-1 font-display text-2xl font-light tracking-wide text-slate-900 uppercase">
+            {isEdit ? `Edit: ${mode.app.company_name}` : 'New Application Record'}
+          </h2>
+          <div className="tapered-datum-rule" />
         </header>
 
-        <div className="space-y-5 px-6 pb-2 sm:px-7">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Company" required error={showErr('company_name')} htmlFor={`${uid}-company`}>
-              <IconInput icon={<Building2 />}>
+        {error && (
+          <div className="mb-4 border border-rose-300 bg-rose-50 p-2.5 font-sans text-xs text-rose-700">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {/* Company & Role */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`${uid}-company`} className="field-label">
+                Company Entity *
+              </label>
+              <div className="relative">
+                <Building2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   ref={firstRef}
                   id={`${uid}-company`}
-                  className="field pl-10"
-                  placeholder="Acme Corp"
+                  required
                   value={form.company_name}
                   onChange={(e) => set('company_name', e.target.value)}
-                  maxLength={300}
-                  autoComplete="off"
+                  placeholder="e.g. Google, Stripe"
+                  className="field-clinical pl-8"
+                  aria-invalid={Boolean(showErr('company_name'))}
                 />
-              </IconInput>
-            </Field>
-            <Field label="Role" required error={showErr('role_title')} htmlFor={`${uid}-role`}>
+              </div>
+              {showErr('company_name') && (
+                <p className="mt-1 font-sans text-[11px] text-rose-600">{errors.company_name}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor={`${uid}-role`} className="field-label">
+                Spec / Role Title *
+              </label>
               <input
                 id={`${uid}-role`}
-                className="field"
-                placeholder="Senior Backend Engineer"
+                required
                 value={form.role_title}
                 onChange={(e) => set('role_title', e.target.value)}
-                maxLength={300}
-                autoComplete="off"
+                placeholder="e.g. Senior Backend Engineer"
+                className="field-clinical"
+                aria-invalid={Boolean(showErr('role_title'))}
               />
-            </Field>
+              {showErr('role_title') && (
+                <p className="mt-1 font-sans text-[11px] text-rose-600">{errors.role_title}</p>
+              )}
+            </div>
           </div>
 
+          {/* Initial status (creation only) */}
           {!isEdit && (
-            <fieldset>
-              <legend className="field-label">Initial status</legend>
-              <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-ink-950/60 p-1">
-                {(
-                  [
-                    { v: 'APPLIED', label: 'Applied', hint: 'Application sent', icon: <Send className="size-4" /> },
-                    { v: 'SAVED', label: 'Saved', hint: 'Not applied yet', icon: <Bookmark className="size-4" /> },
-                  ] as const
-                ).map((o) => {
+            <div>
+              <span className="field-label">Initial State Routing</span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { v: 'APPLIED' as const, label: 'Applied', desc: 'Application dispatched', icon: <Send className="size-3.5" /> },
+                  { v: 'SAVED' as const, label: 'Saved', desc: 'Bookmarked, not yet submitted', icon: <Bookmark className="size-3.5" /> },
+                ].map((o) => {
                   const active = form.initial_status === o.v
                   return (
                     <button
@@ -198,152 +229,151 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                       id={`initial-status-${o.v.toLowerCase()}`}
                       onClick={() => set('initial_status', o.v)}
                       aria-pressed={active}
-                      className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-all duration-200 ${
+                      className={`flex cursor-pointer items-start gap-2 border p-2.5 text-left transition-all ${
                         active
-                          ? 'bg-linear-to-br from-indigo-500/25 to-fuchsia-500/20 text-white ring-1 ring-violet-400/40'
-                          : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                          ? 'border-[var(--color-ink-slate)] bg-slate-100 text-slate-900'
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800'
                       }`}
                     >
-                      <span className={active ? 'text-violet-300' : ''}>{o.icon}</span>
-                      <span>
-                        <span className="block text-sm font-medium">{o.label}</span>
-                        <span className="block text-[11px] text-slate-500">{o.hint}</span>
-                      </span>
+                      <span className={`mt-0.5 ${active ? 'text-[#0088cc]' : 'text-slate-400'}`}>{o.icon}</span>
+                      <div>
+                        <div className="font-sans text-xs font-bold uppercase">{o.label}</div>
+                        <div className="text-[11px] text-slate-500">{o.desc}</div>
+                      </div>
                     </button>
                   )
                 })}
               </div>
-            </fieldset>
+            </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Location" htmlFor={`${uid}-location`}>
-              <IconInput icon={<MapPin />}>
+          {/* Location & Salary */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`${uid}-location`} className="field-label">
+                Location / Work Model
+              </label>
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   id={`${uid}-location`}
-                  className="field pl-10"
-                  placeholder="Zurich · Hybrid"
                   value={form.location}
                   onChange={(e) => set('location', e.target.value)}
-                  maxLength={300}
+                  placeholder="e.g. Zurich, Remote"
+                  className="field-clinical pl-8"
                 />
-              </IconInput>
-            </Field>
-            <Field label="Salary range (CHF)" htmlFor={`${uid}-salary`}>
-              <IconInput icon={<span className="text-[11px] font-bold text-slate-400 select-none">CHF</span>}>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor={`${uid}-salary`} className="field-label">
+                Compensation / Range
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 font-sans text-[11px] font-bold text-slate-400">
+                  CHF
+                </span>
                 <input
                   id={`${uid}-salary`}
-                  className="field pl-10"
-                  placeholder="CHF 130'000 – CHF 160'000"
                   value={form.salary_range}
                   onChange={(e) => set('salary_range', e.target.value)}
-                  maxLength={300}
+                  placeholder="140'000 – 165'000"
+                  className="field-clinical pl-10 tabular-nums"
                 />
-              </IconInput>
-            </Field>
+              </div>
+            </div>
           </div>
 
-          <Field label="Job URL" error={showErr('job_url')} htmlFor={`${uid}-url`}>
-            <IconInput icon={<Link2 />}>
+          {/* Job Posting URL */}
+          <div>
+            <label htmlFor={`${uid}-url`} className="field-label">
+              Posting URL
+            </label>
+            <div className="relative">
+              <Link2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 id={`${uid}-url`}
                 type="url"
-                className="field pl-10"
-                placeholder="https://careers.acme.ch/jobs/123"
                 value={form.job_url}
                 onChange={(e) => set('job_url', e.target.value)}
-                maxLength={2048}
+                placeholder="https://..."
+                className="field-clinical pl-8 font-sans text-xs"
+                aria-invalid={Boolean(showErr('job_url'))}
               />
-            </IconInput>
-          </Field>
-
-          <Field label="Job description" htmlFor={`${uid}-job-description`}>
-            <IconInput icon={<FileText />} top>
-              <textarea
-                id={`${uid}-job-description`}
-                className="field min-h-28 resize-y pl-10 font-sans text-sm leading-relaxed"
-                placeholder="Paste the full job posting description, key responsibilities, requirements, and qualifications..."
-                value={form.job_description}
-                onChange={(e) => set('job_description', e.target.value)}
-                rows={4}
-              />
-            </IconInput>
-          </Field>
-
-          <Field label="Notes" htmlFor={`${uid}-notes`}>
-            <IconInput icon={<StickyNote />} top>
-              <textarea
-                id={`${uid}-notes`}
-                className="field min-h-24 resize-y pl-10"
-                placeholder="Referral from Jane, team uses Go + Postgres…"
-                value={form.notes}
-                onChange={(e) => set('notes', e.target.value)}
-                rows={3}
-              />
-            </IconInput>
-          </Field>
-
-          {error && (
-            <div className="animate-pop-in rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200" role="alert">
-              {error}
             </div>
-          )}
+            {showErr('job_url') && (
+              <p className="mt-1 font-sans text-[11px] text-rose-600">{errors.job_url}</p>
+            )}
+          </div>
+
+          {/* Job Description */}
+          <div>
+            <label htmlFor={`${uid}-job-desc`} className="field-label flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <FileText className="size-3 text-[#0088cc]" />
+                Job Description
+              </span>
+              <span className="text-[10px] font-normal text-slate-400">RAW SPECIFICATION</span>
+            </label>
+            <textarea
+              id={`${uid}-job-desc`}
+              rows={3}
+              value={form.job_description}
+              onChange={(e) => set('job_description', e.target.value)}
+              placeholder="Paste job posting description, requirements, and responsibilities…"
+              className="field-clinical resize-y font-sans text-xs"
+              maxLength={50000}
+            />
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label htmlFor={`${uid}-notes`} className="field-label flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <StickyNote className="size-3 text-slate-400" />
+                Telemetry Notes
+              </span>
+              <span className="text-[10px] font-normal text-slate-400">OPTIONAL</span>
+            </label>
+            <textarea
+              id={`${uid}-notes`}
+              rows={2}
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              placeholder="Referral contacts, recruiter handles, interview prep…"
+              className="field-clinical resize-y font-sans text-xs"
+              maxLength={20000}
+            />
+          </div>
         </div>
 
-        <footer className="sticky bottom-0 mt-4 flex items-center justify-between gap-3 border-t border-white/[0.06] bg-ink-900/95 px-6 py-4 backdrop-blur sm:px-7">
-          <span className="hidden text-xs text-slate-500 sm:block">
-            <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans">Ctrl</kbd> +{' '}
-            <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans">Enter</kbd> to save
+        {/* Action Spine */}
+        <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+          <span className="font-sans text-[11px] font-medium text-slate-400">
+            [ ⌘ + ENTER ] TO COMMIT
           </span>
-          <div className="flex flex-1 justify-end gap-2">
-            <button type="button" onClick={onClose} className="btn btn-ghost" id="cancel-form">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="btn-clinical btn-clinical-ghost"
+              id="form-cancel"
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary min-w-32" disabled={saving} id="submit-form">
-              {saving && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? 'Save changes' : 'Add application'}
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-clinical btn-clinical-primary"
+              id="form-submit"
+            >
+              {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              <span>{isEdit ? 'Save Changes' : 'Commit Record'}</span>
             </button>
           </div>
         </footer>
       </form>
-    </div>
-  )
-}
-
-function Field({
-  label,
-  required,
-  error,
-  htmlFor,
-  children,
-}: {
-  label: string
-  required?: boolean
-  error?: string | false
-  htmlFor: string
-  children: ReactNode
-}) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="field-label">
-        {label}
-        {required && <span className="ml-0.5 text-fuchsia-400">*</span>}
-      </label>
-      {children}
-      {error && <p className="animate-fade-in mt-1.5 text-xs text-rose-300">{error}</p>}
-    </div>
-  )
-}
-
-function IconInput({ icon, top, children }: { icon: ReactNode; top?: boolean; children: ReactNode }) {
-  return (
-    <div className="relative">
-      <span
-        className={`pointer-events-none absolute left-3.5 text-slate-500 [&>svg]:size-4 ${top ? 'top-3' : 'top-1/2 -translate-y-1/2'}`}
-      >
-        {icon}
-      </span>
-      {children}
     </div>
   )
 }

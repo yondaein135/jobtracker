@@ -9,16 +9,20 @@ interface StatusBadgeProps {
   className?: string
 }
 
-/** Coloured pill showing a status label. */
+/** Clinical horizon status badge with elegant sans-serif typography */
 export default function StatusBadge({ status, size = 'md', className = '' }: StatusBadgeProps) {
   const meta = STATUS_META[status]
-  const sizing = size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'
+  const sizing = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap ring-1 ring-inset ${meta.badge} ${sizing} ${className}`}
+      className={`inline-flex items-center gap-1.5 font-sans uppercase tracking-wider font-semibold border ${meta.badge} ${sizing} ${className}`}
+      style={{ clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)' }}
       title={meta.description}
     >
-      <span className={`size-1.5 rounded-full ${meta.dot} ${status === 'INTERVIEWING' ? 'animate-pulse' : ''}`} />
+      <span
+        className={`size-1.5 ${meta.dot} ${status === 'INTERVIEWING' ? 'animate-pulse' : ''}`}
+        style={{ borderRadius: '1px' }}
+      />
       {meta.label}
     </span>
   )
@@ -32,12 +36,11 @@ interface StatusSelectProps {
   id?: string
 }
 
-const POPOVER_WIDTH = 248
+const POPOVER_WIDTH = 250
 const POPOVER_MAX_HEIGHT = 380
 
 /**
- * Inline status picker. Renders the menu in a portal with fixed positioning so
- * it is never clipped by scrollable table containers.
+ * Inline clinical status selector with keyboard navigation and unboxed popover.
  */
 export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSelectProps) {
   const [open, setOpen] = useState(false)
@@ -83,7 +86,6 @@ export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSele
     }
   }, [open, close])
 
-  // Focus the selected option when the menu opens.
   useEffect(() => {
     if (open && pos) {
       menuRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus()
@@ -115,14 +117,16 @@ export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSele
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="group inline-flex cursor-pointer items-center gap-1 rounded-full transition-transform duration-150 hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-accent-400/60 focus-visible:outline-none disabled:cursor-wait"
+        className="group inline-flex cursor-pointer items-center gap-1.5 transition-all outline-none focus-visible:ring-1 focus-visible:ring-[#0088cc] disabled:cursor-wait"
       >
         <StatusBadge status={value} />
         {busy ? (
-          <Loader2 className="size-3.5 animate-spin text-slate-400" />
+          <Loader2 className="size-3 animate-spin text-slate-500" />
         ) : (
           <ChevronDown
-            className={`size-3.5 text-slate-500 transition-transform duration-200 group-hover:text-slate-300 ${open ? 'rotate-180' : ''}`}
+            className={`size-3 text-slate-400 transition-transform duration-150 group-hover:text-slate-700 ${
+              open ? 'rotate-180' : ''
+            }`}
           />
         )}
       </button>
@@ -136,32 +140,44 @@ export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSele
             aria-label="Change status"
             onKeyDown={onMenuKeyDown}
             style={{ top: pos.top, left: pos.left, width: POPOVER_WIDTH, maxHeight: POPOVER_MAX_HEIGHT }}
-            className="animate-pop-in fixed z-50 overflow-y-auto rounded-xl border border-white/10 bg-ink-800/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
+            className="animate-pop-in fixed z-50 overflow-y-auto bg-white p-1 shadow-xl border border-slate-300/80 text-slate-800"
           >
-            <div className="px-2.5 pt-1.5 pb-2 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
-              Move to stage
+            <div className="flex items-center justify-between border-b border-slate-200 px-2.5 py-1.5 text-[10px] font-sans font-semibold tracking-widest text-slate-400 uppercase">
+              <span>Transition Stage</span>
+              <span>[ ESC ]</span>
             </div>
-            {STATUSES.map((s) => {
-              const meta = STATUS_META[s]
-              const selected = s === value
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onClick={() => pick(s)}
-                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors outline-none hover:bg-white/[0.06] focus:bg-white/[0.08] ${selected ? 'bg-white/[0.05]' : ''}`}
-                >
-                  <span className={`size-2 shrink-0 rounded-full ${meta.dot}`} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-slate-100">{meta.label}</span>
-                    <span className="block truncate text-[11px] text-slate-500">{meta.description}</span>
-                  </span>
-                  {selected && <Check className="size-4 shrink-0 text-accent-400" />}
-                </button>
-              )
-            })}
+            <div className="py-1">
+              {STATUSES.map((s) => {
+                const meta = STATUS_META[s]
+                const selected = s === value
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => pick(s)}
+                    className={`flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors outline-none hover:bg-slate-100/80 focus:bg-slate-100 ${
+                      selected ? 'bg-slate-100/90 font-medium' : ''
+                    }`}
+                  >
+                    <span
+                      className={`size-1.5 shrink-0 ${meta.dot}`}
+                      style={{ borderRadius: '1px' }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-sans font-semibold tracking-wide text-slate-800">
+                        {meta.label}
+                      </span>
+                      <span className="block truncate text-[11px] font-sans text-slate-500">
+                        {meta.description}
+                      </span>
+                    </span>
+                    {selected && <Check className="size-3.5 shrink-0 text-[#0088cc]" />}
+                  </button>
+                )
+              })}
+            </div>
           </div>,
           document.body,
         )}

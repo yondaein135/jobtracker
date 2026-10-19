@@ -1,5 +1,6 @@
-import { AlertCircle, CheckCircle2, GitFork, LayoutGrid, Plus, Sparkles, X } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { AlertCircle, CheckCircle2, GitFork, LayoutGrid, Plus, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { AmbientCanvas } from './components/AmbientCanvas'
 import ApplicationForm, { type FormMode } from './components/ApplicationForm'
 import ApplicationList from './components/ApplicationList'
 import PipelineGraph from './components/PipelineGraph'
@@ -18,13 +19,24 @@ export default function App() {
   const [formMode, setFormMode] = useState<FormMode | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [utcTime, setUtcTime] = useState('')
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date()
+      setUtcTime(now.toISOString().replace('T', ' ').slice(0, 19) + ' UTC')
+    }
+    updateTime()
+    const timer = setInterval(updateTime, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const notify = useCallback((message: string, kind: 'success' | 'error' = 'success') => {
     const id = Date.now() + Math.random()
     setToasts((prev) => [...prev, { id, message, kind }])
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    }, 3800)
   }, [])
 
   const removeToast = (id: number) => {
@@ -40,95 +52,120 @@ export default function App() {
     triggerRefresh()
     notify(
       created
-        ? `Added ${app.company_name} (${app.role_title})`
-        : `Updated ${app.company_name}`,
+        ? `Added record: ${app.company_name} [${app.role_title}]`
+        : `Updated record: ${app.company_name}`,
       'success',
     )
   }
 
   return (
-    <div className="relative min-h-screen bg-ink-950 font-sans text-slate-200 selection:bg-indigo-500/30 selection:text-white">
-      {/* Background ambient lighting glows */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div className="animate-drift absolute -top-40 left-1/4 h-[500px] w-[500px] rounded-full bg-indigo-600/15 blur-[120px]" />
-        <div className="animate-drift absolute top-1/3 -right-20 h-[450px] w-[450px] rounded-full bg-fuchsia-600/10 blur-[140px] [animation-delay:4s]" />
-        <div className="animate-drift absolute -bottom-20 left-1/3 h-[600px] w-[600px] rounded-full bg-violet-600/10 blur-[150px] [animation-delay:8s]" />
-      </div>
+    <div className="relative min-h-screen bg-[var(--color-canvas-base)] font-sans text-[var(--color-ink-primary)]">
+      {/* Clinical Horizon Atmospheric Background Mesh & Crosshairs */}
+      <AmbientCanvas />
 
-      {/* Main Container */}
-      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        {/* Navigation Bar */}
-        <header className="glass mb-8 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          {/* Logo & Title */}
-          <div className="flex items-center gap-3.5">
-            <div className="relative flex size-11 items-center justify-center rounded-xl bg-linear-to-tr from-indigo-500 via-violet-500 to-fuchsia-500 p-0.5 shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
-              <div className="flex size-full items-center justify-center rounded-[10px] bg-ink-950/80 backdrop-blur-xs">
-                <Sparkles className="size-5 text-indigo-300" />
-              </div>
-            </div>
+      {/* Main Open-Air Layout Frame */}
+      <div className="relative z-10 mx-auto flex min-h-screen w-full flex-col px-4 py-5 sm:px-8 lg:px-14">
+        {/* Top Peripheral Pre-Header Telemetry */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(15,20,25,0.08)] pb-2 text-[11px] font-sans font-medium tracking-wider text-[var(--color-ink-muted)] uppercase">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[var(--color-ink-primary)]">▪ SYS // ACTIVE</span>
+            <span>·</span>
+            <span>DATA // SQLITE_WAL</span>
+            <span>·</span>
+            <span className="hidden sm:inline">SPEC // CLINICAL_HORIZON</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="tabular-nums font-medium">{utcTime || 'LIVE_FEED'}</span>
+            <span className="font-semibold text-[#0088cc]">STAGE // READY</span>
+          </div>
+        </div>
+
+        {/* Monumental Header & Asymmetric Primary Control Spine */}
+        <header className="mb-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            {/* Monumental Ultralight Title in Plus Jakarta Sans */}
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-xl font-bold tracking-tight text-white">
-                  Job Tracker
-                </h1>
-                <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-indigo-300 uppercase">
-                  Local
+              <div className="flex items-center gap-3">
+                <span className="font-sans text-xs font-bold tracking-widest text-[#0088cc] uppercase">
+                  [ JT-01 ]
+                </span>
+                <span className="text-[11px] font-sans font-medium tracking-wider text-slate-400 uppercase">
+                  LOCAL PERSISTENT STORE
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Visual pipeline & application lifecycle log
+              <h1 className="mt-1 font-display text-4xl sm:text-5xl lg:text-6xl font-extralight tracking-[0.24em] text-[var(--color-ink-primary)] uppercase select-none">
+                Job Tracker
+              </h1>
+              <p className="mt-1 font-sans text-xs font-medium tracking-wider text-[var(--color-ink-secondary)] uppercase">
+                Application Pipeline &amp; Telemetry Matrix
               </p>
+            </div>
+
+            {/* Viewport Action Spine & Unboxed Navigation Tabs */}
+            <div className="flex flex-wrap items-center gap-3 pt-2 lg:pt-0">
+              {/* Unboxed View Switcher */}
+              <nav
+                className="flex items-center border border-[rgba(15,20,25,0.14)] bg-white/60 p-0.5 backdrop-blur-xs"
+                aria-label="Application views"
+              >
+                <button
+                  type="button"
+                  id="tab-applications"
+                  onClick={() => setActiveTab('table')}
+                  aria-pressed={activeTab === 'table'}
+                  className={`btn-clinical ${
+                    activeTab === 'table'
+                      ? 'bg-[var(--color-ink-slate)] text-white'
+                      : 'text-slate-600 hover:text-[var(--color-ink-primary)]'
+                  }`}
+                  style={
+                    activeTab === 'table'
+                      ? { clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }
+                      : undefined
+                  }
+                >
+                  <LayoutGrid className="size-3.5" />
+                  <span>Applications</span>
+                </button>
+                <button
+                  type="button"
+                  id="tab-pipeline-graph"
+                  onClick={() => setActiveTab('graph')}
+                  aria-pressed={activeTab === 'graph'}
+                  className={`btn-clinical ${
+                    activeTab === 'graph'
+                      ? 'bg-[var(--color-ink-slate)] text-white'
+                      : 'text-slate-600 hover:text-[var(--color-ink-primary)]'
+                  }`}
+                  style={
+                    activeTab === 'graph'
+                      ? { clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }
+                      : undefined
+                  }
+                >
+                  <GitFork className="size-3.5" />
+                  <span>Pipeline Flow</span>
+                </button>
+              </nav>
+
+              {/* Primary Action Button */}
+              <button
+                type="button"
+                id="header-add-application"
+                onClick={() => setFormMode({ kind: 'create' })}
+                className="btn-clinical btn-clinical-primary"
+              >
+                <Plus className="size-3.5" />
+                <span>New Application</span>
+              </button>
             </div>
           </div>
 
-          {/* Navigation Tabs & Actions */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* View Switcher Tabs */}
-            <nav className="flex rounded-xl border border-white/10 bg-ink-900/60 p-1" aria-label="Views">
-              <button
-                type="button"
-                id="tab-applications"
-                onClick={() => setActiveTab('table')}
-                aria-pressed={activeTab === 'table'}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all duration-200 select-none ${
-                  activeTab === 'table'
-                    ? 'bg-linear-to-r from-indigo-500/20 to-violet-500/20 text-white shadow-xs ring-1 ring-violet-400/40'
-                    : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
-                }`}
-              >
-                <LayoutGrid className="size-3.5" />
-                Applications
-              </button>
-              <button
-                type="button"
-                id="tab-pipeline-graph"
-                onClick={() => setActiveTab('graph')}
-                aria-pressed={activeTab === 'graph'}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-all duration-200 select-none ${
-                  activeTab === 'graph'
-                    ? 'bg-linear-to-r from-indigo-500/20 to-violet-500/20 text-white shadow-xs ring-1 ring-violet-400/40'
-                    : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
-                }`}
-              >
-                <GitFork className="size-3.5" />
-                Pipeline Flow
-              </button>
-            </nav>
-
-            {/* Quick Add Button */}
-            <button
-              type="button"
-              id="header-add-application"
-              onClick={() => setFormMode({ kind: 'create' })}
-              className="btn btn-primary cursor-pointer text-xs sm:text-sm"
-            >
-              <Plus className="size-4" />
-              <span>New Application</span>
-            </button>
-          </div>
+          {/* Tapered Datum Rule */}
+          <div className="tapered-datum-rule" />
         </header>
 
-        {/* Content Area */}
+        {/* Content Projection Area */}
         <main className="flex-1">
           {activeTab === 'table' ? (
             <ApplicationList
@@ -146,20 +183,26 @@ export default function App() {
           )}
         </main>
 
-        {/* Footer */}
-        <footer className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/[0.06] pt-6 pb-4 text-xs text-slate-500 sm:flex-row">
-          <p>
-            Local persistent SQLite storage &bull; Modern Go backend &amp; React frontend
-          </p>
-          <div className="flex items-center gap-4 text-slate-400">
-            <span>WAL Mode Active</span>
-            <span>&bull;</span>
-            <span>Acyclic Sankey Analytics</span>
+        {/* Peripheral Telemetry Footer */}
+        <footer className="mt-14 border-t border-[rgba(15,20,25,0.08)] pt-4 pb-6 text-xs text-[var(--color-ink-muted)]">
+          <div className="flex flex-col items-start justify-between gap-2 font-sans text-[11px] font-medium tracking-wider sm:flex-row sm:items-center uppercase">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-[var(--color-ink-primary)]">▪ ARCHIVAL REPO</span>
+              <span>·</span>
+              <span>LOCAL SQLITE PERSISTENCE</span>
+              <span>·</span>
+              <span>WAL MODE ACTIVE</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span>ZERO EXTERNAL CLOUD TELEMETRY</span>
+              <span>·</span>
+              <span className="text-[#0088cc] font-semibold">ACYCLIC SANKEY ANALYTICS</span>
+            </div>
           </div>
         </footer>
       </div>
 
-      {/* Quick Add / Edit Modal Drawer */}
+      {/* Modal Drawer for Record Entry / Edit */}
       {formMode && (
         <ApplicationForm
           mode={formMode}
@@ -168,32 +211,33 @@ export default function App() {
         />
       )}
 
-      {/* Floating Toast Notifications */}
+      {/* Floating Clinical Toast Telemetry */}
       <div
-        className="pointer-events-none fixed right-4 bottom-4 z-50 flex max-w-sm flex-col gap-2.5 sm:right-6 sm:bottom-6"
+        className="pointer-events-none fixed right-4 bottom-4 z-50 flex max-w-sm flex-col gap-2 sm:right-8 sm:bottom-8"
         aria-live="polite"
       >
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`animate-pop-in pointer-events-auto flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-xl ${
+            className={`animate-pop-in pointer-events-auto flex items-center justify-between gap-3 border bg-white/95 p-3 shadow-lg backdrop-blur-md ${
               toast.kind === 'error'
-                ? 'border-rose-500/30 bg-rose-950/80 text-rose-200'
-                : 'border-violet-500/30 bg-ink-900/90 text-slate-100'
+                ? 'border-rose-400 text-rose-900'
+                : 'border-slate-300 text-slate-800'
             }`}
+            style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}
           >
-            <div className="flex items-center gap-2.5 text-xs font-medium">
+            <div className="flex items-center gap-2 font-sans text-xs">
               {toast.kind === 'error' ? (
-                <AlertCircle className="size-4 shrink-0 text-rose-400" />
+                <AlertCircle className="size-4 shrink-0 text-rose-600" />
               ) : (
-                <CheckCircle2 className="size-4 shrink-0 text-violet-400" />
+                <CheckCircle2 className="size-4 shrink-0 text-[#0088cc]" />
               )}
-              <span>{toast.message}</span>
+              <span className="font-medium">{toast.message}</span>
             </div>
             <button
               type="button"
               onClick={() => removeToast(toast.id)}
-              className="btn-icon size-6 text-slate-400 hover:text-white"
+              className="cursor-pointer text-slate-400 hover:text-slate-800"
               aria-label="Dismiss notification"
             >
               <X className="size-3.5" />

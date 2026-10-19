@@ -1,99 +1,318 @@
 @import 'tailwindcss';
 
 /* ------------------------------------------------------------------ */
-/* Design tokens                                                       */
+/* Design Tokens & Theme Configuration (Plus Jakarta Sans)            */
 /* ------------------------------------------------------------------ */
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Outfit', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  --color-ink-950: #07080f;
-  --color-ink-900: #0c0e1a;
-  --color-ink-800: #131629;
-  --color-ink-700: #1c2038;
+  --color-canvas-base: #f4f6f9;
+  --color-canvas-pure: #ffffff;
+  --color-ink-primary: #0f1419;
+  --color-ink-slate: #435261;
+  --color-ink-secondary: #5a6878;
+  --color-ink-muted: #8c98a6;
+  --color-accent-chroma: #0088cc;
 
-  --color-accent-400: #818cf8;
-  --color-accent-500: #6366f1;
-  --color-glow-400: #e879f9;
-
-  --animate-fade-in: fade-in 0.25s ease-out both;
-  --animate-pop-in: pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-slide-up: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-drift: drift 22s ease-in-out infinite alternate;
+  --animate-fade-in: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pop-in: pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-up: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
+
   @keyframes pop-in {
-    from { opacity: 0; transform: translateY(6px) scale(0.97); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
+
   @keyframes slide-up {
-    from { opacity: 0; transform: translateY(14px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes drift {
-    from { transform: translate3d(0, 0, 0) scale(1); }
-    to { transform: translate3d(4%, 6%, 0) scale(1.12); }
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 
 /* ------------------------------------------------------------------ */
-/* Base                                                                */
+/* Root Variables                                                     */
+/* ------------------------------------------------------------------ */
+:root {
+  /* Atmospheric High-Key Canvas Grounds */
+  --color-canvas-base: #f4f6f9;
+  --color-canvas-pure: #ffffff;
+  --color-canvas-facet-light: rgba(255, 255, 255, 0.85);
+  --color-canvas-facet-shade: rgba(220, 228, 238, 0.45);
+  --color-canvas-glass: rgba(255, 255, 255, 0.88);
+
+  /* Refined Ink & Cool Slate Hierarchy */
+  --color-ink-primary: #0f1419;
+  --color-ink-slate: #435261;
+  --color-ink-secondary: #5a6878;
+  --color-ink-muted: #8c98a6;
+
+  /* Surgical Linework & Datum Rules */
+  --border-datum: 1px solid rgba(15, 20, 25, 0.09);
+  --border-hairline-faint: 1px solid rgba(15, 20, 25, 0.05);
+  --border-bracket: 1.5px solid rgba(15, 20, 25, 0.35);
+
+  /* Solitary Operational Accent: Diagnostic Cyan */
+  --color-accent-chroma: #0088cc;
+  --color-accent-subtle: rgba(0, 136, 204, 0.09);
+
+  /* Typography Stacks: Elegant Sans-Serif */
+  --font-family-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Mechanical Timing */
+  --transition-snap: 70ms cubic-bezier(0.1, 0.9, 0.2, 1.0);
+}
+
+/* ------------------------------------------------------------------ */
+/* Base Elements                                                      */
 /* ------------------------------------------------------------------ */
 @layer base {
-  :root {
-    color-scheme: dark;
-  }
   html,
   body {
-    @apply bg-ink-950 font-sans text-slate-200 antialiased;
+    background-color: var(--color-canvas-base);
+    color: var(--color-ink-primary);
+    font-family: var(--font-sans);
     min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+
   ::selection {
-    background: rgb(129 140 248 / 0.35);
+    background: rgba(0, 136, 204, 0.22);
+    color: var(--color-ink-primary);
   }
-  /* Native pickers (date/select) follow the dark scheme. */
+
   input[type='datetime-local']::-webkit-calendar-picker-indicator {
-    filter: invert(0.8);
+    filter: invert(0.2);
     cursor: pointer;
   }
+
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(255 255 255 / 0.12) transparent;
+    scrollbar-color: rgba(15, 20, 25, 0.18) transparent;
   }
 }
 
 /* ------------------------------------------------------------------ */
-/* Reusable component classes                                          */
+/* Reusable Clinical Minimalist Component Classes                     */
 /* ------------------------------------------------------------------ */
 @layer components {
-  .glass {
-    @apply rounded-2xl border border-white/[0.07] bg-white/[0.03] shadow-[0_8px_40px_-12px_rgb(0_0_0/0.6)] backdrop-blur-xl;
+  /* Tapered datum rule: 2px bold bar stepping down into 1px hairline */
+  .tapered-datum-rule {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 6px 0 14px 0;
+  }
+  .tapered-datum-rule::before {
+    content: '';
+    width: 38%;
+    height: 2px;
+    background-color: var(--color-ink-primary);
+  }
+  .tapered-datum-rule::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: rgba(15, 20, 25, 0.12);
   }
 
-  .btn {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 select-none focus-visible:ring-2 focus-visible:ring-accent-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+  /* Square-dot section rule: ▪────────────── */
+  .terminal-dot-rule {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 12px 0 18px 0;
   }
-  .btn-primary {
-    @apply bg-linear-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-[0_6px_24px_-6px_rgb(139_92_246/0.65)] hover:-translate-y-px hover:shadow-[0_10px_32px_-6px_rgb(168_85_247/0.75)] hover:brightness-110 active:translate-y-0;
+  .terminal-dot-rule::before {
+    content: '▪';
+    font-size: 10px;
+    color: var(--color-ink-primary);
+    line-height: 1;
   }
-  .btn-ghost {
-    @apply border border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white;
-  }
-  .btn-icon {
-    @apply inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-all duration-150 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-accent-400/60 focus-visible:outline-none;
+  .terminal-dot-rule::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(15, 20, 25, 0.18) 0%, rgba(15, 20, 25, 0.04) 100%);
   }
 
+  /* Vertical bracket framing: [ content ] */
+  .bracket-frame {
+    position: relative;
+    padding: 4px 12px;
+    border-left: 1.5px solid var(--color-ink-slate);
+    border-right: 1.5px solid var(--color-ink-slate);
+  }
+  .bracket-frame::before,
+  .bracket-frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-top: 1.5px solid var(--color-ink-slate);
+    border-bottom: 1.5px solid var(--color-ink-slate);
+    width: 4px;
+    pointer-events: none;
+  }
+  .bracket-frame::after {
+    left: auto;
+    right: 0;
+  }
+
+  /* 4-Corner L-brackets using pseudo elements + nested corner markers */
+  .corner-l-bracket-tl {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: 10px;
+    height: 10px;
+    border-top: 1.5px solid rgba(15, 20, 25, 0.35);
+    border-left: 1.5px solid rgba(15, 20, 25, 0.35);
+    pointer-events: none;
+  }
+  .corner-l-bracket-tr {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-top: 1.5px solid rgba(15, 20, 25, 0.35);
+    border-right: 1.5px solid rgba(15, 20, 25, 0.35);
+    pointer-events: none;
+  }
+  .corner-l-bracket-bl {
+    position: absolute;
+    bottom: -2px;
+    left: -2px;
+    width: 10px;
+    height: 10px;
+    border-bottom: 1.5px solid rgba(15, 20, 25, 0.35);
+    border-left: 1.5px solid rgba(15, 20, 25, 0.35);
+    pointer-events: none;
+  }
+  .corner-l-bracket-br {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-bottom: 1.5px solid rgba(15, 20, 25, 0.35);
+    border-right: 1.5px solid rgba(15, 20, 25, 0.35);
+    pointer-events: none;
+  }
+
+  /* 45-degree chamfered geometry */
+  .chamfer-tag {
+    clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+  }
+
+  /* Clinical Horizon Buttons with Elegant Sans-Serif Typography */
+  .btn-clinical {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 select-none text-xs font-sans font-medium uppercase tracking-wider transition-all;
+    height: 34px;
+    padding: 0 14px;
+  }
+
+  .btn-clinical-primary {
+    background-color: var(--color-ink-primary);
+    color: #ffffff;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+    transition: background-color 100ms ease;
+  }
+  .btn-clinical-primary:hover {
+    background-color: var(--color-ink-slate);
+  }
+
+  .btn-clinical-accent {
+    background-color: var(--color-accent-chroma);
+    color: #ffffff;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+    transition: filter 100ms ease;
+  }
+  .btn-clinical-accent:hover {
+    filter: brightness(1.1);
+  }
+
+  .btn-clinical-ghost {
+    background-color: transparent;
+    color: var(--color-ink-slate);
+    border: 1px solid rgba(15, 20, 25, 0.14);
+  }
+  .btn-clinical-ghost:hover {
+    background-color: rgba(15, 20, 25, 0.04);
+    color: var(--color-ink-primary);
+    border-color: rgba(15, 20, 25, 0.3);
+  }
+
+  .btn-clinical-icon {
+    @apply inline-flex size-7 cursor-pointer items-center justify-center text-slate-500 transition-colors;
+    background: transparent;
+    border: none;
+  }
+  .btn-clinical-icon:hover {
+    color: var(--color-ink-primary);
+    background-color: rgba(15, 20, 25, 0.05);
+  }
+
+  /* Minimalist Form Controls with Elegant Sans-Serif Typography */
   .field-label {
-    @apply mb-1.5 block text-xs font-medium tracking-wide text-slate-400 uppercase;
-  }
-  .field {
-    @apply w-full rounded-xl border border-white/10 bg-ink-900/70 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all duration-150 outline-none hover:border-white/20 focus:border-accent-400/70 focus:ring-4 focus:ring-accent-500/15;
+    @apply mb-1 block font-sans text-[11px] font-semibold tracking-wider text-slate-500 uppercase;
   }
 
-  .chip {
-    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150;
+  .field-clinical {
+    @apply w-full bg-white px-3 py-2 text-xs font-sans text-slate-800 placeholder-slate-400 outline-none transition-all;
+    border: 1px solid rgba(15, 20, 25, 0.14);
+    border-bottom: 2px solid rgba(15, 20, 25, 0.3);
+  }
+  .field-clinical:focus {
+    border-color: var(--color-accent-chroma);
+    border-bottom-color: var(--color-accent-chroma);
+    box-shadow: 0 0 0 1px var(--color-accent-chroma);
+  }
+
+  /* Open-Air Filter Item */
+  .filter-item {
+    @apply inline-flex cursor-pointer items-center gap-1.5 px-3 py-1 text-xs font-sans font-medium tracking-wide transition-all;
+    background: transparent;
+    color: var(--color-ink-muted);
+    border: none;
+  }
+  .filter-item:hover {
+    color: var(--color-ink-primary);
+    background-color: rgba(15, 20, 25, 0.03);
+  }
+  .filter-item-active {
+    background-color: var(--color-ink-slate);
+    color: #ffffff;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+  }
+  .filter-item-active:hover {
+    background-color: var(--color-ink-primary);
+    color: #ffffff;
   }
 }
