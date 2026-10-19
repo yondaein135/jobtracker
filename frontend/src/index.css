@@ -84,6 +84,133 @@
 
   /* Mechanical Timing */
   --transition-snap: 70ms cubic-bezier(0.1, 0.9, 0.2, 1.0);
+
+  /* Smooth Motion */
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 180ms;
+  --duration-base: 320ms;
+  --duration-slow: 560ms;
+  --transition-smooth: var(--duration-base) var(--ease-smooth);
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion Keyframes                                                   */
+/* ------------------------------------------------------------------ */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes reveal-x {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes panel-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes datum-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Reveal utilities */
+.reveal {
+  animation: reveal var(--duration-slow) var(--ease-smooth) both;
+}
+.reveal-row {
+  animation: reveal-x var(--duration-slow) var(--ease-smooth) both;
+}
+.view-enter {
+  animation: reveal var(--duration-slow) var(--ease-smooth) both;
+}
+.panel-open {
+  animation: panel-open var(--duration-slow) var(--ease-smooth) both;
+}
+.backdrop-enter {
+  animation: backdrop-in var(--duration-base) var(--ease-smooth) both;
+}
+.dialog-enter {
+  animation: dialog-in var(--duration-slow) var(--ease-smooth) both;
+}
+.toast-enter {
+  animation: toast-in var(--duration-base) var(--ease-smooth) both;
+}
+
+/* Sliding tab indicator */
+.tab-indicator {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  background-color: var(--color-ink-slate);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+  transition:
+    transform var(--duration-base) var(--ease-smooth),
+    width var(--duration-base) var(--ease-smooth);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -133,6 +260,8 @@
     width: 38%;
     height: 2px;
     background-color: var(--color-ink-primary);
+    transform-origin: left;
+    animation: datum-draw var(--duration-slow) var(--ease-smooth) 120ms both;
   }
   .tapered-datum-rule::after {
     content: '';
@@ -233,16 +362,28 @@
 
   /* Clinical Horizon Buttons with Elegant Sans-Serif Typography */
   .btn-clinical {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 select-none text-xs font-sans font-medium uppercase tracking-wider transition-all;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 select-none text-xs font-sans font-medium uppercase tracking-wider;
     height: 34px;
     padding: 0 14px;
+    transition:
+      color var(--duration-fast) var(--ease-smooth),
+      background-color var(--duration-base) var(--ease-smooth),
+      border-color var(--duration-fast) var(--ease-smooth),
+      opacity var(--duration-fast) var(--ease-smooth),
+      transform var(--duration-fast) var(--ease-smooth);
+  }
+  .btn-clinical:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+  }
+  .btn-clinical:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
 
   .btn-clinical-primary {
     background-color: var(--color-ink-primary);
     color: #ffffff;
     clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
-    transition: background-color 100ms ease;
   }
   .btn-clinical-primary:hover {
     background-color: var(--color-ink-slate);
@@ -252,7 +393,6 @@
     background-color: var(--color-accent-chroma);
     color: #ffffff;
     clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
-    transition: filter 100ms ease;
   }
   .btn-clinical-accent:hover {
     filter: brightness(1.1);
@@ -270,9 +410,16 @@
   }
 
   .btn-clinical-icon {
-    @apply inline-flex size-7 cursor-pointer items-center justify-center text-slate-500 transition-colors;
+    @apply inline-flex size-7 cursor-pointer items-center justify-center text-slate-500;
     background: transparent;
     border: none;
+    transition:
+      color var(--duration-fast) var(--ease-smooth),
+      background-color var(--duration-fast) var(--ease-smooth),
+      transform var(--duration-fast) var(--ease-smooth);
+  }
+  .btn-clinical-icon:active {
+    transform: scale(0.9);
   }
   .btn-clinical-icon:hover {
     color: var(--color-ink-primary);
@@ -285,9 +432,12 @@
   }
 
   .field-clinical {
-    @apply w-full bg-white px-3 py-2 text-xs font-sans text-slate-800 placeholder-slate-400 outline-none transition-all;
+    @apply w-full bg-white px-3 py-2 text-xs font-sans text-slate-800 placeholder-slate-400 outline-none;
     border: 1px solid rgba(15, 20, 25, 0.14);
     border-bottom: 2px solid rgba(15, 20, 25, 0.3);
+    transition:
+      border-color var(--duration-fast) var(--ease-smooth),
+      box-shadow var(--duration-base) var(--ease-smooth);
   }
   .field-clinical:focus {
     border-color: var(--color-accent-chroma);
@@ -297,10 +447,19 @@
 
   /* Open-Air Filter Item */
   .filter-item {
-    @apply inline-flex cursor-pointer items-center gap-1.5 px-3 py-1 text-xs font-sans font-medium tracking-wide transition-all;
+    @apply inline-flex cursor-pointer items-center gap-1.5 px-3 py-1 text-xs font-sans font-medium tracking-wide;
     background: transparent;
     color: var(--color-ink-muted);
     border: none;
+    clip-path: polygon(0 0, 100% 0, 100% 0, 100% 100%, 0 100%);
+    transition:
+      color var(--duration-fast) var(--ease-smooth),
+      background-color var(--duration-base) var(--ease-smooth),
+      clip-path var(--duration-base) var(--ease-smooth),
+      transform var(--duration-fast) var(--ease-smooth);
+  }
+  .filter-item:active {
+    transform: scale(0.97);
   }
   .filter-item:hover {
     color: var(--color-ink-primary);

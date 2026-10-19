@@ -82,46 +82,36 @@ export const AmbientCanvas = memo(function AmbientCanvas() {
       <div className="hidden lg:flex fixed top-0 bottom-0 left-2 flex-col justify-between py-8 text-[9px] font-sans font-semibold tracking-wider text-slate-400/40 select-none">
         <div className="flex items-center gap-1">
           <span className="h-px w-2 bg-slate-400/30" />
-          <span>T-00</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="h-px w-1.5 bg-slate-400/20" />
-          <span>25%</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="h-px w-2 bg-slate-400/30" />
-          <span>T-50</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="h-px w-1.5 bg-slate-400/20" />
-          <span>75%</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="h-px w-2 bg-slate-400/30" />
-          <span>T-99</span>
         </div>
       </div>
 
       {/* Right Peripheral Telemetry Ruler Track */}
       <div className="hidden lg:flex fixed top-0 bottom-0 right-2 flex-col justify-between py-8 text-[9px] font-sans font-semibold tracking-wider text-slate-400/40 select-none items-end">
         <div className="flex items-center gap-1">
-          <span>SYS.OP</span>
           <span className="h-px w-2 bg-slate-400/30" />
         </div>
         <div className="flex items-center gap-1">
-          <span>PORT.8080</span>
           <span className="h-px w-1.5 bg-slate-400/20" />
         </div>
         <div className="flex items-center gap-1">
-          <span>CHROMA.CYAN</span>
           <span className="h-px w-2 bg-slate-400/30" />
         </div>
         <div className="flex items-center gap-1">
-          <span>DB.SQLITE</span>
           <span className="h-px w-1.5 bg-slate-400/20" />
         </div>
         <div className="flex items-center gap-1">
-          <span>END.RULER</span>
           <span className="h-px w-2 bg-slate-400/30" />
         </div>
       </div>

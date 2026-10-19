@@ -155,7 +155,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
   const filtersActive = statusFilter !== '' || debouncedSearch.trim() !== ''
   const chips = useMemo(
     () =>
-      [{ key: '' as Filter, label: 'All Records', count: total }].concat(
+      [{ key: '' as Filter, label: 'All', count: total }].concat(
         STATUSES.map((s) => ({ key: s as Filter, label: STATUS_META[s].label, count: counts[s] ?? 0 })),
       ),
     [counts, total],
@@ -185,8 +185,8 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="FILTER BY ENTITY OR ROLE..."
-              className="field-clinical pl-9 pr-14 font-sans text-xs uppercase tracking-wide"
+              placeholder="Search company or role"
+              className="field-clinical pl-9 pr-14 font-sans text-xs"
               aria-label="Search by company or role"
             />
             {search ? (
@@ -225,7 +225,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                 >
                   <span>{c.label}</span>
                   <span
-                    className={`font-sans text-[11px] font-semibold tabular-nums ${
+                    className={`font-sans text-[11px] font-semibold tabular-nums transition-colors duration-300 ${
                       active ? 'text-sky-200' : 'text-slate-400'
                     }`}
                   >
@@ -244,7 +244,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <p className="font-sans text-xs text-rose-600">{error}</p>
             <button className="btn-clinical btn-clinical-ghost" onClick={onChanged} id="retry-load">
-              Retry Load
+              Retry
             </button>
           </div>
         ) : loading && apps.length === 0 ? (
@@ -253,8 +253,8 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
           filtersActive ? (
             <EmptyState
               icon={<SearchX className="size-6 text-slate-400" />}
-              title="NO MATCHING RECORDS FOUND"
-              body="No applications matched the current filter criteria or query string."
+              title="No matches"
+              body="No applications match this filter or search."
               action={
                 <button
                   className="btn-clinical btn-clinical-ghost"
@@ -271,8 +271,8 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
           ) : (
             <EmptyState
               icon={<Briefcase className="size-6 text-slate-400" />}
-              title="REPOSITORY CONTAINS ZERO RECORDS"
-              body="Initialize your tracking matrix by committing your first target role application."
+              title="No applications yet"
+              body="Add your first application to start tracking."
               action={
                 <button
                   className="btn-clinical btn-clinical-primary"
@@ -280,7 +280,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                   id="empty-add-application"
                 >
                   <Plus className="size-3.5" />
-                  <span>New Application</span>
+                  <span>Add application</span>
                 </button>
               }
             />
@@ -291,24 +291,23 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
               <thead>
                 <tr className="border-b border-[rgba(15,20,25,0.14)] font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
                   <th className="w-8 py-2.5 pl-2" aria-label="Expand" />
-                  <th className="px-3 py-2.5">Entity // Company</th>
-                  <th className="hidden px-3 py-2.5 md:table-cell">Spec // Role</th>
-                  <th className="px-3 py-2.5">Current Stage</th>
-                  <th className="px-3 py-2.5">Logged Timestamp</th>
-                  <th className="py-2.5 pr-2 text-right" aria-label="Operations">
-                    Ops
-                  </th>
+                  <th className="px-3 py-2.5">Company</th>
+                  <th className="hidden px-3 py-2.5 md:table-cell">Role</th>
+                  <th className="px-3 py-2.5">Status</th>
+                  <th className="px-3 py-2.5">Updated</th>
+                  <th className="py-2.5 pr-2 text-right" aria-label="Actions" />
                 </tr>
               </thead>
-              <tbody className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-                {apps.map((app) => {
+              <tbody className={`transition-opacity duration-300 ${loading ? 'opacity-60' : ''}`}>
+                {apps.map((app, idx) => {
                   const expanded = expandedId === app.id
                   return (
                     <Fragment key={app.id}>
                       <tr
-                        className={`group border-b border-[rgba(15,20,25,0.07)] transition-colors ${
-                          expanded ? 'bg-slate-100/70' : 'hover:bg-slate-50/80'
+                        className={`reveal-row group border-b border-[rgba(15,20,25,0.07)] transition-colors duration-300 ${
+                          expanded ? 'bg-slate-100/70 shadow-[inset_2px_0_0_#0088cc]' : 'hover:bg-slate-50/80'
                         }`}
+                        style={{ animationDelay: `${Math.min(idx, 12) * 45}ms` }}
                       >
                         <td className="py-3 pl-2">
                           <button
@@ -320,7 +319,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                             aria-label={expanded ? 'Hide history' : 'Show history'}
                           >
                             <ChevronRight
-                              className={`size-3.5 transition-transform duration-150 ${
+                              className={`size-3.5 transition-[transform,color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                                 expanded ? 'rotate-90 text-[#0088cc]' : 'text-slate-400'
                               }`}
                             />
@@ -334,7 +333,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                                 <button
                                   type="button"
                                   onClick={() => setExpandedId(expanded ? null : app.id)}
-                                  className="cursor-pointer truncate font-semibold text-slate-900 hover:text-[#0088cc] text-left"
+                                  className="cursor-pointer truncate font-semibold text-slate-900 transition-colors duration-200 hover:text-[#0088cc] text-left"
                                 >
                                   {app.company_name}
                                 </button>
@@ -386,7 +385,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                           </span>
                         </td>
                         <td className="py-3 pr-2">
-                          <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100">
+                          <div className="flex items-center justify-end gap-1 opacity-60 transition-opacity duration-200 group-hover:opacity-100">
                             <button
                               type="button"
                               id={`edit-${app.id}`}
@@ -401,9 +400,9 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                                 type="button"
                                 id={`confirm-delete-${app.id}`}
                                 onClick={() => remove(app)}
-                                className="animate-pop-in ml-1 cursor-pointer border border-rose-400 bg-rose-50 px-2 py-1 font-sans text-[10px] font-bold text-rose-700 hover:bg-rose-100"
+                                className="animate-pop-in ml-1 cursor-pointer border border-rose-400 bg-rose-50 px-2 py-1 font-sans text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-100"
                               >
-                                CONFIRM?
+                                Confirm?
                               </button>
                             ) : (
                               <button
@@ -421,7 +420,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                       </tr>
                       {expanded && (
                         <tr className="border-b border-[rgba(15,20,25,0.08)] bg-slate-50/60">
-                          <td colSpan={6} className="p-0">
+                          <td colSpan={6} className="panel-open p-0">
                             <HistoryPanel
                               app={app}
                               refreshKey={refreshKey}
@@ -444,9 +443,8 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
       {apps.length > 0 && (
         <div className="flex items-center justify-between border-t border-[rgba(15,20,25,0.08)] pt-3 font-sans text-[11px] font-medium tracking-wider text-slate-500 uppercase">
           <span>
-            RECORD_COUNT: {apps.length} OF {total} TOTAL
+            {apps.length} of {total} shown
           </span>
-          <span>SCHEMA // ACTIVE_PARTITION</span>
         </div>
       )}
     </section>
@@ -521,14 +519,14 @@ function HistoryPanel({
       <div>
         <h3 className="mb-4 flex items-center gap-2 font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
           <History className="size-3.5 text-slate-500" />
-          <span>Status History Timeline</span>
-          {history.length > 0 && <span className="text-slate-400 font-normal">· {history.length} Events</span>}
+          <span>Status history</span>
+          {history.length > 0 && <span className="text-slate-400 font-normal">· {history.length} events</span>}
         </h3>
         {loadError ? (
           <p className="font-sans text-xs text-rose-600">{loadError}</p>
         ) : !detail ? (
           <div className="flex items-center gap-2 font-sans text-xs text-slate-400">
-            <Loader2 className="size-3.5 animate-spin" /> Fetching history telemetry…
+            <Loader2 className="size-3.5 animate-spin" /> Loading history…
           </div>
         ) : (
           <ol className="relative pl-2">
@@ -537,7 +535,11 @@ function HistoryPanel({
               const isLast = idx === history.length - 1
               const prev = history[idx - 1]
               return (
-                <li key={h.id} className="relative flex gap-3.5 pb-5 last:pb-1">
+                <li
+                  key={h.id}
+                  className="reveal relative flex gap-3.5 pb-5 last:pb-1"
+                  style={{ animationDelay: `${120 + idx * 50}ms` }}
+                >
                   {!isLast && (
                     <span
                       className="absolute top-4 bottom-0 left-[4px] w-px bg-slate-300"
@@ -584,7 +586,7 @@ function HistoryPanel({
         <div className="border border-slate-300/80 bg-white p-4">
           <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-2">
             <h3 className="font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-              Specification Details
+              Details
             </h3>
             <button
               type="button"
@@ -641,12 +643,12 @@ function HistoryPanel({
           className="border border-slate-300/80 bg-white p-4"
         >
           <h3 className="mb-3 font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-            Log Status Transition
+            Log status change
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`${fieldId}-status`} className="field-label">
-                Target Status
+                Status
               </label>
               <select
                 id={`${fieldId}-status`}
@@ -663,7 +665,7 @@ function HistoryPanel({
             </div>
             <div>
               <label htmlFor={`${fieldId}-date`} className="field-label">
-                Effective Timestamp
+                Date
               </label>
               <input
                 id={`${fieldId}-date`}
@@ -679,7 +681,7 @@ function HistoryPanel({
             </div>
           </div>
           <label htmlFor={`${fieldId}-notes`} className="field-label mt-3">
-            Transition Note
+            Note
           </label>
           <input
             id={`${fieldId}-notes`}
@@ -697,7 +699,7 @@ function HistoryPanel({
               id={`${fieldId}-submit`}
             >
               {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-              <span>Commit Transition</span>
+              <span>Log status</span>
             </button>
           </div>
         </form>
@@ -760,7 +762,7 @@ function SkeletonRows() {
 
 function EmptyState({ icon, title, body, action }: { icon: ReactNode; title: string; body: string; action: ReactNode }) {
   return (
-    <div className="flex flex-col items-center px-4 py-16 text-center">
+    <div className="reveal flex flex-col items-center px-4 py-16 text-center">
       <div className="mb-3 flex size-12 items-center justify-center border border-slate-300 bg-white shadow-xs">
         {icon}
       </div>

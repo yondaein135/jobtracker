@@ -63,7 +63,7 @@ export default function PipelineGraph({ refreshKey, onCreate }: PipelineGraphPro
           onClick={() => setReload((r) => r + 1)}
           id="retry-graph"
         >
-          Retry Load
+          Retry
         </button>
       </div>
     )
@@ -73,25 +73,25 @@ export default function PipelineGraph({ refreshKey, onCreate }: PipelineGraphPro
     return (
       <div className="flex items-center justify-center py-28 font-sans text-xs font-medium text-slate-500">
         <Loader2 className="mr-2 size-4 animate-spin text-[#0088cc]" />
-        <span>PROCESSING TELEMETRY MATRIX…</span>
+        <span>Loading…</span>
       </div>
     )
   }
 
   if (data.total_applications === 0) {
     return (
-      <div className="flex flex-col items-center border border-slate-300/80 bg-white p-16 text-center">
+      <div className="reveal flex flex-col items-center border border-slate-300/80 bg-white p-16 text-center">
         <div className="mb-3 flex size-12 items-center justify-center border border-slate-300 bg-slate-50">
           <Workflow className="size-6 text-slate-400" />
         </div>
         <h2 className="font-sans text-xs font-bold tracking-wider text-slate-800 uppercase">
-          Zero Flow Telemetry Detected
+          No data yet
         </h2>
         <p className="mt-1 max-w-sm text-xs text-slate-500 font-sans">
-          Populate records in the Applications repository to compute flow metrics and Sankey stage routing.
+          Add applications to see how they move through each stage.
         </p>
         <button className="btn-clinical btn-clinical-primary mt-4" onClick={onCreate} id="graph-empty-add">
-          New Application
+          Add application
         </button>
       </div>
     )
@@ -109,12 +109,8 @@ function Dashboard({ data, loading, onRefresh }: { data: GraphAnalytics; loading
       {/* Sub-header & Controls */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between border-b border-[rgba(15,20,25,0.1)] pb-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-sans text-xs font-bold text-[#0088cc] uppercase">[ SPEC: SANKEY_DAG ]</span>
-            <span className="font-sans text-[11px] font-medium text-slate-400 uppercase">TELEMETRY_PIPELINE</span>
-          </div>
           <h2 id="pipeline-heading" className="mt-0.5 font-display text-2xl font-light tracking-wide text-slate-900 uppercase">
-            Application Flow &amp; Analytics
+            Pipeline
           </h2>
         </div>
         <button
@@ -125,7 +121,7 @@ function Dashboard({ data, loading, onRefresh }: { data: GraphAnalytics; loading
           id="refresh-graph"
         >
           <RefreshCw className={`size-3 ${loading ? 'animate-spin' : ''}`} />
-          <span>Sync Metrics</span>
+          <span>Refresh</span>
         </button>
       </div>
 
@@ -164,7 +160,10 @@ function Dashboard({ data, loading, onRefresh }: { data: GraphAnalytics; loading
       </div>
 
       {/* Main Sankey Diagram Area */}
-      <div className="relative border border-[rgba(15,20,25,0.12)] bg-white/70 p-5 backdrop-blur-xs">
+      <div
+        className="reveal relative border border-[rgba(15,20,25,0.12)] bg-white/70 p-5 backdrop-blur-xs"
+        style={{ animationDelay: '200ms' }}
+      >
         {/* Exterior L-Brackets */}
         <span className="corner-l-bracket-tl" />
         <span className="corner-l-bracket-tr" />
@@ -175,23 +174,23 @@ function Dashboard({ data, loading, onRefresh }: { data: GraphAnalytics; loading
           <div>
             <h3 className="flex items-center gap-2 font-sans text-xs font-bold tracking-wider text-slate-800 uppercase">
               <Workflow className="size-3.5 text-[#0088cc]" />
-              <span>Stage Transition Routing</span>
+              <span>Stage flow</span>
             </h3>
             <p className="mt-0.5 font-sans text-xs text-slate-500">
-              Interactive acyclic flow graph mapping volume transitions across application states.
+              How applications moved between stages.
             </p>
           </div>
           {awaiting > 0 && (
             <span className="border border-sky-300 bg-sky-50 px-2 py-0.5 font-sans text-[11px] font-semibold text-sky-800">
-              {awaiting} PENDING INITIAL RESPONSE
+              {awaiting} awaiting response
             </span>
           )}
         </div>
 
         {data.total_applied === 0 ? (
           <div className="flex h-56 flex-col items-center justify-center font-sans text-xs text-slate-400">
-            <p>NO APPLIED TRANSITIONS COMMITTED YET</p>
-            <p className="mt-1 text-[11px] text-slate-500">Move a Saved record to Applied to initialize flow paths.</p>
+            <p>No applications sent yet</p>
+            <p className="mt-1 text-[11px] text-slate-500">Move a saved application to Applied to see the flow.</p>
           </div>
         ) : (
           <SankeyChartView data={data} />
@@ -201,7 +200,7 @@ function Dashboard({ data, loading, onRefresh }: { data: GraphAnalytics; loading
           <p className="mt-3 flex items-center gap-1.5 font-sans text-[11px] text-slate-400 border-t border-slate-100 pt-2">
             <Info className="size-3 text-slate-400" />
             <span>
-              {data.omitted_backward_links} backward transition{data.omitted_backward_links === 1 ? '' : 's'} omitted to preserve DAG layout.
+              {data.omitted_backward_links} backward transition{data.omitted_backward_links === 1 ? '' : 's'} hidden from this chart.
             </span>
           </p>
         )}
@@ -210,23 +209,29 @@ function Dashboard({ data, loading, onRefresh }: { data: GraphAnalytics; loading
       {/* Distribution & Stage Penetration Grid */}
       <div className="grid gap-5 lg:grid-cols-5">
         {/* Current Stage Distribution */}
-        <div className="relative border border-[rgba(15,20,25,0.12)] bg-white/70 p-5 backdrop-blur-xs lg:col-span-3">
+        <div
+          className="reveal relative border border-[rgba(15,20,25,0.12)] bg-white/70 p-5 backdrop-blur-xs lg:col-span-3"
+          style={{ animationDelay: '280ms' }}
+        >
           <div className="mb-3 border-b border-slate-200 pb-2">
             <h3 className="font-sans text-xs font-bold tracking-wider text-slate-800 uppercase">
-              Current Stage Partitioning
+              Current status
             </h3>
-            <p className="mt-0.5 font-sans text-xs text-slate-500">Active distribution index across all tracked applications.</p>
+            <p className="mt-0.5 font-sans text-xs text-slate-500">Where each application is now.</p>
           </div>
           <DistributionChart distribution={data.current_distribution} />
         </div>
 
         {/* Stage Penetration Reach */}
-        <div className="relative border border-[rgba(15,20,25,0.12)] bg-white/70 p-5 backdrop-blur-xs lg:col-span-2">
+        <div
+          className="reveal relative border border-[rgba(15,20,25,0.12)] bg-white/70 p-5 backdrop-blur-xs lg:col-span-2"
+          style={{ animationDelay: '340ms' }}
+        >
           <div className="mb-3 border-b border-slate-200 pb-2">
             <h3 className="font-sans text-xs font-bold tracking-wider text-slate-800 uppercase">
-              Stage Penetration Reach
+              Stage reach
             </h3>
-            <p className="mt-0.5 font-sans text-xs text-slate-500">Proportion of applied volume that ever reached each stage.</p>
+            <p className="mt-0.5 font-sans text-xs text-slate-500">Share of applied jobs that ever reached each stage.</p>
           </div>
           <StageReach data={data} />
         </div>
@@ -278,10 +283,10 @@ function KpiCard({
   const animated = useCountUp(value)
   return (
     <div
-      className="relative border border-[rgba(15,20,25,0.12)] bg-white/80 p-4 transition-all hover:border-[rgba(15,20,25,0.3)] sm:p-5"
+      className="relative border border-[rgba(15,20,25,0.12)] bg-white/80 p-4 transition-[border-color,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[rgba(15,20,25,0.3)] sm:p-5"
       style={{
         borderLeft: `3px solid ${accent}`,
-        animation: `slide-up 0.35s cubic-bezier(0.16,1,0.3,1) ${delay}ms both`,
+        animation: `reveal var(--duration-slow) var(--ease-smooth) ${delay}ms both`,
       }}
     >
       <div className="font-sans text-[11px] font-bold tracking-widest text-slate-500 uppercase">
@@ -349,7 +354,7 @@ function SankeyChartView({ data }: { data: GraphAnalytics }) {
               data.reached_counts[name] ?? total,
               data.total_applied,
             )} of applied</div>
-            <div style="color:#64748b;font-size:11px;margin-top:2px;font-family:${FONT_SANS};">Currently partitioned here: <b>${current}</b></div>`
+            <div style="color:#64748b;font-size:11px;margin-top:2px;font-family:${FONT_SANS};">Currently here: <b>${current}</b></div>`
         },
       },
       series: [
@@ -477,7 +482,7 @@ function StageReach({ data }: { data: GraphAnalytics }) {
   }, [])
 
   if (!data.total_applied) {
-    return <p className="font-sans text-xs text-slate-400">NO APPLIED RECORDS TO ANALYZE</p>
+    return <p className="font-sans text-xs text-slate-400">No applied jobs yet</p>
   }
 
   return (
@@ -500,7 +505,7 @@ function StageReach({ data }: { data: GraphAnalytics }) {
             </div>
             <div className="h-1 overflow-hidden bg-slate-200/80">
               <div
-                className="h-full transition-[width] duration-700 ease-out"
+                className="h-full transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{
                   width: mounted ? `${pct}%` : '0%',
                   transitionDelay: `${i * 50}ms`,

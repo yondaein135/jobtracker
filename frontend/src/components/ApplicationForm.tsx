@@ -120,7 +120,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs font-sans"
+      className="backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs font-sans"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       role="presentation"
     >
@@ -132,7 +132,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${uid}-title`}
-        className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto border border-slate-300 bg-white p-6 shadow-2xl text-slate-800"
+        className="dialog-enter relative max-h-[92vh] w-full max-w-xl overflow-y-auto border border-slate-300 bg-white p-6 shadow-2xl text-slate-800"
         noValidate
       >
         {/* Exterior Corner L-Brackets */}
@@ -145,7 +145,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
         <header className="mb-4">
           <div className="flex items-center justify-between">
             <span className="font-sans text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              {isEdit ? 'RECORD_OPS // MODIFY' : 'RECORD_OPS // INITIALIZE'}
+              {isEdit ? 'Edit' : 'New'}
             </span>
             <button
               type="button"
@@ -157,7 +157,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
             </button>
           </div>
           <h2 id={`${uid}-title`} className="mt-1 font-display text-2xl font-light tracking-wide text-slate-900 uppercase">
-            {isEdit ? `Edit: ${mode.app.company_name}` : 'New Application Record'}
+            {isEdit ? mode.app.company_name : 'Add application'}
           </h2>
           <div className="tapered-datum-rule" />
         </header>
@@ -173,7 +173,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`${uid}-company`} className="field-label">
-                Company Entity *
+                Company *
               </label>
               <div className="relative">
                 <Building2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
@@ -195,7 +195,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
 
             <div>
               <label htmlFor={`${uid}-role`} className="field-label">
-                Spec / Role Title *
+                Role *
               </label>
               <input
                 id={`${uid}-role`}
@@ -215,11 +215,11 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
           {/* Initial status (creation only) */}
           {!isEdit && (
             <div>
-              <span className="field-label">Initial State Routing</span>
+              <span className="field-label">Status</span>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { v: 'APPLIED' as const, label: 'Applied', desc: 'Application dispatched', icon: <Send className="size-3.5" /> },
-                  { v: 'SAVED' as const, label: 'Saved', desc: 'Bookmarked, not yet submitted', icon: <Bookmark className="size-3.5" /> },
+                  { v: 'APPLIED' as const, label: 'Applied', desc: 'Already submitted', icon: <Send className="size-3.5" /> },
+                  { v: 'SAVED' as const, label: 'Saved', desc: 'Not submitted yet', icon: <Bookmark className="size-3.5" /> },
                 ].map((o) => {
                   const active = form.initial_status === o.v
                   return (
@@ -229,13 +229,13 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                       id={`initial-status-${o.v.toLowerCase()}`}
                       onClick={() => set('initial_status', o.v)}
                       aria-pressed={active}
-                      className={`flex cursor-pointer items-start gap-2 border p-2.5 text-left transition-all ${
+                      className={`flex cursor-pointer items-start gap-2 border p-2.5 text-left transition-[background-color,border-color,color,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] ${
                         active
                           ? 'border-[var(--color-ink-slate)] bg-slate-100 text-slate-900'
                           : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800'
                       }`}
                     >
-                      <span className={`mt-0.5 ${active ? 'text-[#0088cc]' : 'text-slate-400'}`}>{o.icon}</span>
+                      <span className={`mt-0.5 transition-colors duration-300 ${active ? 'text-[#0088cc]' : 'text-slate-400'}`}>{o.icon}</span>
                       <div>
                         <div className="font-sans text-xs font-bold uppercase">{o.label}</div>
                         <div className="text-[11px] text-slate-500">{o.desc}</div>
@@ -251,7 +251,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`${uid}-location`} className="field-label">
-                Location / Work Model
+                Location
               </label>
               <div className="relative">
                 <MapPin className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
@@ -267,7 +267,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
 
             <div>
               <label htmlFor={`${uid}-salary`} className="field-label">
-                Compensation / Range
+                Salary
               </label>
               <div className="relative">
                 <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 font-sans text-[11px] font-bold text-slate-400">
@@ -313,7 +313,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                 <FileText className="size-3 text-[#0088cc]" />
                 Job Description
               </span>
-              <span className="text-[10px] font-normal text-slate-400">RAW SPECIFICATION</span>
+              <span className="text-[10px] font-normal text-slate-400">OPTIONAL</span>
             </label>
             <textarea
               id={`${uid}-job-desc`}
@@ -331,7 +331,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
             <label htmlFor={`${uid}-notes`} className="field-label flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <StickyNote className="size-3 text-slate-400" />
-                Telemetry Notes
+                Notes
               </span>
               <span className="text-[10px] font-normal text-slate-400">OPTIONAL</span>
             </label>
@@ -350,7 +350,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
         {/* Action Spine */}
         <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
           <span className="font-sans text-[11px] font-medium text-slate-400">
-            [ ⌘ + ENTER ] TO COMMIT
+            ⌘ / Ctrl + Enter to save
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -369,7 +369,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
               id="form-submit"
             >
               {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
-              <span>{isEdit ? 'Save Changes' : 'Commit Record'}</span>
+              <span>{isEdit ? 'Save changes' : 'Add application'}</span>
             </button>
           </div>
         </footer>
