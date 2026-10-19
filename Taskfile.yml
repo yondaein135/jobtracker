@@ -1,0 +1,18 @@
+version: '3'
+
+tasks:
+  run:
+    desc: "Build and run the entire application in Docker"
+    cmds:
+      - mkdir -p data
+      - docker compose up --build
+
+  down:
+    desc: "Stop the running Docker containers"
+    cmds:
+      - docker compose down
+
+  clean:
+    desc: "Stop containers and remove built images (preserves ./data)"
+    cmds:
+      - docker compose down --rmi local

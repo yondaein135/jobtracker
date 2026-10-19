@@ -1,0 +1,15 @@
+services:
+  job-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: job-application-tracker
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=8080
+      - DB_PATH=/app/data/tracker.db
+      - STATIC_DIR=/app/static
+    restart: unless-stopped
