@@ -1,4 +1,4 @@
-import { Bookmark, Building2, DollarSign, Link2, Loader2, MapPin, Send, StickyNote, X } from 'lucide-react'
+import { Bookmark, Building2, FileText, Link2, Loader2, MapPin, Send, StickyNote, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { api } from '../api/client'
 import type { Application, ApplicationDetail, InitialStatus } from '../types'
@@ -19,6 +19,7 @@ interface FormState {
   salary_range: string
   job_url: string
   notes: string
+  job_description: string
 }
 
 const empty: FormState = {
@@ -29,6 +30,7 @@ const empty: FormState = {
   salary_range: '',
   job_url: '',
   notes: '',
+  job_description: '',
 }
 
 function isValidUrl(v: string) {
@@ -54,6 +56,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
           salary_range: mode.app.salary_range,
           job_url: mode.app.job_url,
           notes: mode.app.notes,
+          job_description: mode.app.job_description || '',
         }
       : empty,
   )
@@ -99,6 +102,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
       salary_range: form.salary_range.trim(),
       job_url: form.job_url.trim(),
       notes: form.notes.trim(),
+      job_description: form.job_description.trim(),
     }
     try {
       const saved =
@@ -218,19 +222,19 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                 <input
                   id={`${uid}-location`}
                   className="field pl-10"
-                  placeholder="Remote · Berlin"
+                  placeholder="Zurich · Hybrid"
                   value={form.location}
                   onChange={(e) => set('location', e.target.value)}
                   maxLength={300}
                 />
               </IconInput>
             </Field>
-            <Field label="Salary range" htmlFor={`${uid}-salary`}>
-              <IconInput icon={<DollarSign />}>
+            <Field label="Salary range (CHF)" htmlFor={`${uid}-salary`}>
+              <IconInput icon={<span className="text-[11px] font-bold text-slate-400 select-none">CHF</span>}>
                 <input
                   id={`${uid}-salary`}
                   className="field pl-10"
-                  placeholder="€80k – €95k"
+                  placeholder="CHF 130'000 – CHF 160'000"
                   value={form.salary_range}
                   onChange={(e) => set('salary_range', e.target.value)}
                   maxLength={300}
@@ -245,10 +249,23 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                 id={`${uid}-url`}
                 type="url"
                 className="field pl-10"
-                placeholder="https://careers.acme.com/jobs/123"
+                placeholder="https://careers.acme.ch/jobs/123"
                 value={form.job_url}
                 onChange={(e) => set('job_url', e.target.value)}
                 maxLength={2048}
+              />
+            </IconInput>
+          </Field>
+
+          <Field label="Job description" htmlFor={`${uid}-job-description`}>
+            <IconInput icon={<FileText />} top>
+              <textarea
+                id={`${uid}-job-description`}
+                className="field min-h-28 resize-y pl-10 font-sans text-sm leading-relaxed"
+                placeholder="Paste the full job posting description, key responsibilities, requirements, and qualifications..."
+                value={form.job_description}
+                onChange={(e) => set('job_description', e.target.value)}
+                rows={4}
               />
             </IconInput>
           </Field>

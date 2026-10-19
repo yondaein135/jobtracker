@@ -10,6 +10,7 @@ services:
       - ./data:/app/data
     environment:
       - PORT=8080
-      - DB_PATH=/app/data/tracker.db
+      - DB_PATH=${DB_PATH:-/app/data/tracker.db}
+      - SEED_DUMMY_DATA=${SEED_DUMMY_DATA:-0}
       - STATIC_DIR=/app/static
     restart: unless-stopped

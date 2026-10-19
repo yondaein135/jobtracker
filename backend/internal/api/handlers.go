@@ -23,9 +23,10 @@ import (
 const dbTimeLayout = "2006-01-02 15:04:05"
 
 const (
-	maxBodyBytes   = 1 << 20 // 1 MiB
-	maxShortField  = 300
-	maxNotesLength = 20_000
+	maxBodyBytes            = 1 << 20 // 1 MiB
+	maxShortField           = 300
+	maxNotesLength          = 20_000
+	maxJobDescriptionLength = 50_000
 )
 
 // Handler holds dependencies for the HTTP handlers.
@@ -55,6 +56,7 @@ SELECT
     a.id, a.company_name, a.role_title,
     COALESCE(a.location, ''), COALESCE(a.job_url, ''),
     COALESCE(a.salary_range, ''), COALESCE(a.notes, ''),
+    COALESCE(a.job_description, ''),
     strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at),
     ls.current_status,
     strftime('%Y-%m-%dT%H:%M:%SZ', ls.status_updated_at)
@@ -64,7 +66,7 @@ JOIN LatestStatus ls ON a.id = ls.application_id AND ls.rn = 1
 
 const listApplicationsSQL = latestStatusCTE + `
 WHERE (?1 = '' OR ls.current_status = ?1)
-  AND (?2 = '' OR a.company_name LIKE ?3 ESCAPE '\' OR a.role_title LIKE ?3 ESCAPE '\')
+  AND (?2 = '' OR a.company_name LIKE ?3 ESCAPE '\' OR a.role_title LIKE ?3 ESCAPE '\' OR a.job_description LIKE ?3 ESCAPE '\' OR a.notes LIKE ?3 ESCAPE '\')
 ORDER BY ls.status_updated_at DESC, a.id DESC;
 `
 
@@ -198,11 +200,12 @@ func (h *Handler) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	req.JobURL = strings.TrimSpace(req.JobURL)
 	req.SalaryRange = strings.TrimSpace(req.SalaryRange)
 	req.Notes = strings.TrimSpace(req.Notes)
+	req.JobDescription = strings.TrimSpace(req.JobDescription)
 	if req.InitialStatus == "" {
 		req.InitialStatus = models.StatusApplied
 	}
 
-	if msg := validateFields(&req.CompanyName, &req.RoleTitle, &req.Location, &req.JobURL, &req.SalaryRange, &req.Notes, true); msg != "" {
+	if msg := validateFields(&req.CompanyName, &req.RoleTitle, &req.Location, &req.JobURL, &req.SalaryRange, &req.Notes, &req.JobDescription, true); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
@@ -220,9 +223,9 @@ func (h *Handler) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback() //nolint:errcheck // no-op after commit
 
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO applications (company_name, role_title, location, job_url, salary_range, notes)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		req.CompanyName, req.RoleTitle, req.Location, req.JobURL, req.SalaryRange, req.Notes)
+		INSERT INTO applications (company_name, role_title, location, job_url, salary_range, notes, job_description)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		req.CompanyName, req.RoleTitle, req.Location, req.JobURL, req.SalaryRange, req.Notes, req.JobDescription)
 	if err != nil {
 		internalError(w, "insert application", err)
 		return
@@ -295,6 +298,7 @@ func (h *Handler) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		{"job_url", req.JobURL},
 		{"salary_range", req.SalaryRange},
 		{"notes", req.Notes},
+		{"job_description", req.JobDescription},
 	}
 
 	sets := make([]string, 0, len(cols))
@@ -541,7 +545,7 @@ type rowScanner interface {
 func scanApplication(s rowScanner) (models.Application, error) {
 	var a models.Application
 	err := s.Scan(&a.ID, &a.CompanyName, &a.RoleTitle, &a.Location, &a.JobURL,
-		&a.SalaryRange, &a.Notes, &a.CreatedAt, &a.CurrentStatus, &a.StatusUpdatedAt)
+		&a.SalaryRange, &a.Notes, &a.JobDescription, &a.CreatedAt, &a.CurrentStatus, &a.StatusUpdatedAt)
 	return a, err
 }
 
@@ -586,7 +590,7 @@ func scanStatusCounts(ctx context.Context, db *sql.DB, query string, fn func(mod
 	return rows.Err()
 }
 
-func validateFields(company, role, location, jobURL, salary, notes *string, requireCore bool) string {
+func validateFields(company, role, location, jobURL, salary, notes, jobDesc *string, requireCore bool) string {
 	if requireCore && *company == "" {
 		return "company_name is required"
 	}
@@ -603,6 +607,9 @@ func validateFields(company, role, location, jobURL, salary, notes *string, requ
 	}
 	if len(*notes) > maxNotesLength {
 		return "notes too long"
+	}
+	if jobDesc != nil && len(*jobDesc) > maxJobDescriptionLength {
+		return "job_description too long"
 	}
 	if msg := validateURL(*jobURL); msg != "" {
 		return msg
@@ -625,7 +632,7 @@ func validatePatch(req *models.UpdateApplicationRequest) string {
 		return p
 	}
 	return validateFields(or(req.CompanyName), or(req.RoleTitle), or(req.Location),
-		or(req.JobURL), or(req.SalaryRange), or(req.Notes), false)
+		or(req.JobURL), or(req.SalaryRange), or(req.Notes), or(req.JobDescription), false)
 }
 
 // validateURL rejects non-http(s) schemes (e.g. javascript:) since job_url is

@@ -36,6 +36,15 @@ func main() {
 		cancel()
 		log.Fatalf("migrate: %v", err)
 	}
+
+	seedDummy := env("SEED_DUMMY_DATA", "0")
+	if seedDummy == "1" || seedDummy == "true" || strings.Contains(dbPath, "dummy") {
+		if err := db.SeedDummyData(ctx, conn); err != nil {
+			log.Printf("seed dummy data warning: %v", err)
+		} else {
+			log.Printf("dummy data checked/seeded at %s", dbPath)
+		}
+	}
 	cancel()
 	log.Printf("database ready at %s (WAL, foreign_keys=ON)", dbPath)
 

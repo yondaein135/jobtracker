@@ -2,8 +2,8 @@ import {
   Briefcase,
   CalendarClock,
   ChevronRight,
-  DollarSign,
   ExternalLink,
+  FileText,
   History,
   Loader2,
   MapPin,
@@ -523,7 +523,7 @@ function HistoryPanel({
           <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <Detail icon={<Briefcase />} label="Role" value={app.role_title} />
             <Detail icon={<MapPin />} label="Location" value={app.location} />
-            <Detail icon={<DollarSign />} label="Salary" value={app.salary_range} />
+            <Detail icon={<span className="text-[10px] font-bold text-slate-400 tracking-tight select-none">CHF</span>} label="Salary" value={app.salary_range} />
             <Detail icon={<CalendarClock />} label="Added" value={formatDate(app.created_at)} />
           </dl>
           {app.job_url && (
@@ -536,6 +536,17 @@ function HistoryPanel({
               <ExternalLink className="size-3.5 shrink-0" />
               <span className="truncate">{app.job_url}</span>
             </a>
+          )}
+          {app.job_description && (
+            <div className="mt-3 border-t border-white/[0.06] pt-3">
+              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+                <FileText className="size-3.5 text-violet-400" />
+                <span>Job Description</span>
+              </div>
+              <div className="max-h-60 overflow-y-auto rounded-lg border border-white/[0.04] bg-black/25 p-3 text-xs leading-relaxed whitespace-pre-wrap text-slate-300 selection:bg-indigo-500/30">
+                {app.job_description}
+              </div>
+            </div>
           )}
           {app.notes && <p className="mt-3 border-t border-white/[0.06] pt-3 text-sm whitespace-pre-wrap text-slate-400">{app.notes}</p>}
         </div>

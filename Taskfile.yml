@@ -1,11 +1,17 @@
 version: '3'
 
 tasks:
-  run:
-    desc: "Build and run the entire application in Docker"
+  dev:
+    desc: "Build and run the application in Docker with the dummy database (data/dummy.db)"
     cmds:
       - mkdir -p data
-      - docker compose up --build
+      - DB_PATH=/app/data/dummy.db SEED_DUMMY_DATA=1 docker compose up --build
+
+  run:
+    desc: "Build and run the application in Docker with the production database (data/tracker.db)"
+    cmds:
+      - mkdir -p data
+      - DB_PATH=/app/data/tracker.db SEED_DUMMY_DATA=0 docker compose up --build
 
   down:
     desc: "Stop the running Docker containers"
@@ -16,3 +22,9 @@ tasks:
     desc: "Stop containers and remove built images (preserves ./data)"
     cmds:
       - docker compose down --rmi local
+
+  dev:reset:
+    desc: "Reset the dummy database with fresh dummy data"
+    cmds:
+      - rm -f data/dummy.db data/dummy.db-wal data/dummy.db-shm
+      - task: dev

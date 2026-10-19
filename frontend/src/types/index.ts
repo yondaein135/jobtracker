@@ -113,6 +113,7 @@ export interface Application {
   job_url: string
   salary_range: string
   notes: string
+  job_description: string
   created_at: string
   current_status: Status
   status_updated_at: string
@@ -138,10 +139,11 @@ export interface CreateApplicationInput {
   salary_range?: string
   job_url?: string
   notes?: string
+  job_description?: string
 }
 
 export type UpdateApplicationInput = Partial<
-  Pick<Application, 'company_name' | 'role_title' | 'location' | 'job_url' | 'salary_range' | 'notes'>
+  Pick<Application, 'company_name' | 'role_title' | 'location' | 'job_url' | 'salary_range' | 'notes' | 'job_description'>
 >
 
 export interface StatusChangeInput {

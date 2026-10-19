@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite" // CGO-free SQLite driver, registers as "sqlite"
@@ -23,6 +24,8 @@ var schemaSQL string
 var migrations = []string{
 	// v1: baseline schema (schema.sql) — nothing extra to apply.
 	``,
+	// v2: add job_description column to applications.
+	`ALTER TABLE applications ADD COLUMN job_description TEXT NOT NULL DEFAULT '';`,
 }
 
 // Open opens (creating if necessary) the SQLite database at path, configured
@@ -81,9 +84,22 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 			return fmt.Errorf("begin migration %d: %w", i+1, err)
 		}
 		if migrations[i] != "" {
-			if _, err := tx.ExecContext(ctx, migrations[i]); err != nil {
-				tx.Rollback()
-				return fmt.Errorf("apply migration %d: %w", i+1, err)
+			apply := true
+			if strings.Contains(migrations[i], "job_description") {
+				exists, err := columnExists(ctx, tx, "applications", "job_description")
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("check column job_description: %w", err)
+				}
+				if exists {
+					apply = false
+				}
+			}
+			if apply {
+				if _, err := tx.ExecContext(ctx, migrations[i]); err != nil {
+					tx.Rollback()
+					return fmt.Errorf("apply migration %d: %w", i+1, err)
+				}
 			}
 		}
 		// PRAGMA does not accept bound parameters; i is a trusted integer.
@@ -97,6 +113,31 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 	}
 
 	return verify(ctx, conn)
+}
+
+func columnExists(ctx context.Context, tx *sql.Tx, table, col string) (bool, error) {
+	rows, err := tx.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			cid     int
+			name    string
+			ctype   string
+			notnull int
+			dfltVal any
+			pk      int
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltVal, &pk); err != nil {
+			return false, err
+		}
+		if strings.EqualFold(name, col) {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }
 
 // verify asserts that the connection-level guarantees we rely on are active.
