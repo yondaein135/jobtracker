@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS applications (
     salary_range TEXT DEFAULT '',
     notes TEXT DEFAULT '',
     job_description TEXT DEFAULT '',
+    applied_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

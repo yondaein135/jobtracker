@@ -1,6 +1,7 @@
-import { Bookmark, Building2, FileText, Link2, Loader2, MapPin, Send, StickyNote, X } from 'lucide-react'
+import { Bookmark, Building2, Calendar, FileText, Link2, Loader2, MapPin, Send, StickyNote, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
+import { toLocalDateInputValue, toLocalDateString } from '../lib/format'
 import type { Application, ApplicationDetail, InitialStatus } from '../types'
 
 export type FormMode = { kind: 'create' } | { kind: 'edit'; app: Application }
@@ -20,6 +21,7 @@ interface FormState {
   job_url: string
   notes: string
   job_description: string
+  applied_on: string
 }
 
 const empty: FormState = {
@@ -31,6 +33,7 @@ const empty: FormState = {
   job_url: '',
   notes: '',
   job_description: '',
+  applied_on: toLocalDateInputValue(),
 }
 
 function isValidUrl(v: string) {
@@ -57,9 +60,11 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
           job_url: mode.app.job_url,
           notes: mode.app.notes,
           job_description: mode.app.job_description || '',
+          applied_on: toLocalDateString(mode.app.applied_on),
         }
       : empty,
   )
+  const [appliedOnModified, setAppliedOnModified] = useState(false)
   const [touched, setTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -103,6 +108,11 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
       job_url: form.job_url.trim(),
       notes: form.notes.trim(),
       job_description: form.job_description.trim(),
+      ...(mode.kind === 'edit'
+        ? { applied_on: form.applied_on ? form.applied_on : undefined }
+        : appliedOnModified && form.applied_on
+          ? { applied_on: form.applied_on }
+          : {}),
     }
     try {
       const saved =
@@ -247,8 +257,30 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
             </div>
           )}
 
-          {/* Location & Salary */}
+          {/* Applied Date & Location */}
           <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`${uid}-applied-on`} className="field-label flex items-center justify-between">
+                <span>Applied Date</span>
+                {!isEdit && !appliedOnModified && (
+                  <span className="text-[10px] font-normal text-slate-400">DEFAULT: TODAY</span>
+                )}
+              </label>
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  id={`${uid}-applied-on`}
+                  type="date"
+                  value={form.applied_on}
+                  onChange={(e) => {
+                    set('applied_on', e.target.value)
+                    setAppliedOnModified(true)
+                  }}
+                  className="field-clinical pl-8 font-sans text-xs"
+                />
+              </div>
+            </div>
+
             <div>
               <label htmlFor={`${uid}-location`} className="field-label">
                 Location
@@ -264,7 +296,10 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                 />
               </div>
             </div>
+          </div>
 
+          {/* Salary & Job Posting URL */}
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`${uid}-salary`} className="field-label">
                 Salary
@@ -282,28 +317,27 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                 />
               </div>
             </div>
-          </div>
 
-          {/* Job Posting URL */}
-          <div>
-            <label htmlFor={`${uid}-url`} className="field-label">
-              Posting URL
-            </label>
-            <div className="relative">
-              <Link2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                id={`${uid}-url`}
-                type="url"
-                value={form.job_url}
-                onChange={(e) => set('job_url', e.target.value)}
-                placeholder="https://..."
-                className="field-clinical pl-8 font-sans text-xs"
-                aria-invalid={Boolean(showErr('job_url'))}
-              />
+            <div>
+              <label htmlFor={`${uid}-url`} className="field-label">
+                Posting URL
+              </label>
+              <div className="relative">
+                <Link2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  id={`${uid}-url`}
+                  type="url"
+                  value={form.job_url}
+                  onChange={(e) => set('job_url', e.target.value)}
+                  placeholder="https://..."
+                  className="field-clinical pl-8 font-sans text-xs"
+                  aria-invalid={Boolean(showErr('job_url'))}
+                />
+              </div>
+              {showErr('job_url') && (
+                <p className="mt-1 font-sans text-[11px] text-rose-600">{errors.job_url}</p>
+              )}
             </div>
-            {showErr('job_url') && (
-              <p className="mt-1 font-sans text-[11px] text-rose-600">{errors.job_url}</p>
-            )}
           </div>
 
           {/* Job Description */}

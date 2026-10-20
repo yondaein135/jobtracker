@@ -26,6 +26,8 @@ var migrations = []string{
 	``,
 	// v2: add job_description column to applications.
 	`ALTER TABLE applications ADD COLUMN job_description TEXT NOT NULL DEFAULT '';`,
+	// v3: add applied_on column to applications.
+	`ALTER TABLE applications ADD COLUMN applied_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;`,
 }
 
 // Open opens (creating if necessary) the SQLite database at path, configured
@@ -90,6 +92,16 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 				if err != nil {
 					tx.Rollback()
 					return fmt.Errorf("check column job_description: %w", err)
+				}
+				if exists {
+					apply = false
+				}
+			}
+			if strings.Contains(migrations[i], "applied_on") {
+				exists, err := columnExists(ctx, tx, "applications", "applied_on")
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("check column applied_on: %w", err)
 				}
 				if exists {
 					apply = false

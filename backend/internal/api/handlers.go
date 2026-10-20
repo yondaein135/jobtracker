@@ -57,6 +57,7 @@ SELECT
     COALESCE(a.location, ''), COALESCE(a.job_url, ''),
     COALESCE(a.salary_range, ''), COALESCE(a.notes, ''),
     COALESCE(a.job_description, ''),
+    strftime('%Y-%m-%dT%H:%M:%SZ', a.applied_on),
     strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at),
     ls.current_status,
     strftime('%Y-%m-%dT%H:%M:%SZ', ls.status_updated_at)
@@ -222,10 +223,20 @@ func (h *Handler) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after commit
 
+	appliedOn := nowDB()
+	if req.AppliedOn != nil && strings.TrimSpace(*req.AppliedOn) != "" {
+		t, err := parseTimestamp(strings.TrimSpace(*req.AppliedOn))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "applied_on must be an ISO-8601 date or datetime")
+			return
+		}
+		appliedOn = t.UTC().Format(dbTimeLayout)
+	}
+
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO applications (company_name, role_title, location, job_url, salary_range, notes, job_description)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		req.CompanyName, req.RoleTitle, req.Location, req.JobURL, req.SalaryRange, req.Notes, req.JobDescription)
+		INSERT INTO applications (company_name, role_title, location, job_url, salary_range, notes, job_description, applied_on)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.CompanyName, req.RoleTitle, req.Location, req.JobURL, req.SalaryRange, req.Notes, req.JobDescription, appliedOn)
 	if err != nil {
 		internalError(w, "insert application", err)
 		return
@@ -236,10 +247,15 @@ func (h *Handler) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	initialChangedAt := nowDB()
+	if req.InitialStatus == models.StatusApplied {
+		initialChangedAt = appliedOn
+	}
+
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO application_status_history (application_id, status, notes, changed_at)
 		VALUES (?, ?, ?, ?)`,
-		id, req.InitialStatus, "Application created", nowDB()); err != nil {
+		id, req.InitialStatus, "Application created", initialChangedAt); err != nil {
 		internalError(w, "insert initial status", err)
 		return
 	}
@@ -287,6 +303,21 @@ func (h *Handler) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var formattedAppliedOn string
+	if req.AppliedOn != nil {
+		v := strings.TrimSpace(*req.AppliedOn)
+		if v == "" {
+			writeError(w, http.StatusBadRequest, "applied_on cannot be empty")
+			return
+		}
+		t, err := parseTimestamp(v)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "applied_on must be an ISO-8601 date or datetime")
+			return
+		}
+		formattedAppliedOn = t.UTC().Format(dbTimeLayout)
+	}
+
 	type col struct {
 		name string
 		val  *string
@@ -299,6 +330,9 @@ func (h *Handler) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		{"salary_range", req.SalaryRange},
 		{"notes", req.Notes},
 		{"job_description", req.JobDescription},
+	}
+	if req.AppliedOn != nil {
+		cols = append(cols, col{"applied_on", &formattedAppliedOn})
 	}
 
 	sets := make([]string, 0, len(cols))
@@ -544,7 +578,7 @@ type rowScanner interface {
 func scanApplication(s rowScanner) (models.Application, error) {
 	var a models.Application
 	err := s.Scan(&a.ID, &a.CompanyName, &a.RoleTitle, &a.Location, &a.JobURL,
-		&a.SalaryRange, &a.Notes, &a.JobDescription, &a.CreatedAt, &a.CurrentStatus, &a.StatusUpdatedAt)
+		&a.SalaryRange, &a.Notes, &a.JobDescription, &a.AppliedOn, &a.CreatedAt, &a.CurrentStatus, &a.StatusUpdatedAt)
 	return a, err
 }
 

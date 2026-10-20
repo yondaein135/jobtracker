@@ -72,6 +72,7 @@ type Application struct {
 	SalaryRange     string `json:"salary_range"`
 	Notes           string `json:"notes"`
 	JobDescription  string `json:"job_description"`
+	AppliedOn       string `json:"applied_on"`
 	CreatedAt       string `json:"created_at"`
 	CurrentStatus   Status `json:"current_status"`
 	StatusUpdatedAt string `json:"status_updated_at"`
@@ -94,14 +95,15 @@ type ApplicationDetail struct {
 
 // CreateApplicationRequest is the payload for POST /api/applications.
 type CreateApplicationRequest struct {
-	CompanyName    string `json:"company_name"`
-	RoleTitle      string `json:"role_title"`
-	Location       string `json:"location"`
-	JobURL         string `json:"job_url"`
-	SalaryRange    string `json:"salary_range"`
-	Notes          string `json:"notes"`
-	JobDescription string `json:"job_description"`
-	InitialStatus  Status `json:"initial_status"`
+	CompanyName    string  `json:"company_name"`
+	RoleTitle      string  `json:"role_title"`
+	Location       string  `json:"location"`
+	JobURL         string  `json:"job_url"`
+	SalaryRange    string  `json:"salary_range"`
+	Notes          string  `json:"notes"`
+	JobDescription string  `json:"job_description"`
+	InitialStatus  Status  `json:"initial_status"`
+	AppliedOn      *string `json:"applied_on,omitempty"`
 }
 
 // UpdateApplicationRequest is the payload for PATCH /api/applications/{id}.
@@ -114,6 +116,7 @@ type UpdateApplicationRequest struct {
 	SalaryRange    *string `json:"salary_range"`
 	Notes          *string `json:"notes"`
 	JobDescription *string `json:"job_description"`
+	AppliedOn      *string `json:"applied_on,omitempty"`
 }
 
 // StatusChangeRequest is the payload for POST /api/applications/{id}/status.

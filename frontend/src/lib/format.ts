@@ -49,6 +49,20 @@ export function toLocalInputValue(d = new Date()): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/** Value for <input type="date"> in the user's local timezone (YYYY-MM-DD). */
+export function toLocalDateInputValue(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Converts an ISO/date string to local YYYY-MM-DD for <input type="date">. */
+export function toLocalDateString(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return toLocalDateInputValue(d)
+}
+
 export function percent(part: number, whole: number): string {
   if (!whole) return '0%'
   const p = (part / whole) * 100

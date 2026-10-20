@@ -176,11 +176,18 @@ func SeedDummyData(ctx context.Context, conn *sql.DB) error {
 	for _, app := range dummies {
 		firstEvent := app.history[0]
 		createdAt := now.AddDate(0, 0, -firstEvent.daysAgo).Add(time.Duration(-firstEvent.hoursAgo) * time.Hour).Format("2006-01-02 15:04:05")
+		appliedOn := createdAt
+		for _, evt := range app.history {
+			if evt.status == models.StatusApplied {
+				appliedOn = now.AddDate(0, 0, -evt.daysAgo).Add(time.Duration(-evt.hoursAgo) * time.Hour).Format("2006-01-02 15:04:05")
+				break
+			}
+		}
 
 		res, err := tx.ExecContext(ctx, `
-			INSERT INTO applications (company_name, role_title, location, job_url, salary_range, notes, job_description, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			app.company, app.role, app.location, app.jobURL, app.salary, app.notes, app.description, createdAt)
+			INSERT INTO applications (company_name, role_title, location, job_url, salary_range, notes, job_description, applied_on, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			app.company, app.role, app.location, app.jobURL, app.salary, app.notes, app.description, appliedOn, createdAt)
 		if err != nil {
 			return fmt.Errorf("insert dummy app %s: %w", app.company, err)
 		}

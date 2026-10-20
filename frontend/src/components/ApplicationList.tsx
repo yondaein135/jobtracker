@@ -1,5 +1,6 @@
 import {
   Briefcase,
+  Calendar,
   CalendarClock,
   ChevronRight,
   ExternalLink,
@@ -346,6 +347,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                   <th className="px-3 py-2.5">Company</th>
                   <th className="hidden px-3 py-2.5 md:table-cell">Role</th>
                   <th className="px-3 py-2.5">Status</th>
+                  <th className="hidden px-3 py-2.5 sm:table-cell">Applied</th>
                   <th className="px-3 py-2.5">Updated</th>
                   <th className="py-2.5 pr-2 text-right" aria-label="Actions" />
                 </tr>
@@ -428,6 +430,14 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                             onChange={(s) => changeStatus(app, s)}
                           />
                         </td>
+                        <td className="hidden px-3 py-3 whitespace-nowrap sm:table-cell">
+                          <span
+                            className="font-sans text-xs text-slate-600 tabular-nums"
+                            title={formatDateTime(app.applied_on)}
+                          >
+                            {formatDate(app.applied_on)}
+                          </span>
+                        </td>
                         <td className="px-3 py-3 whitespace-nowrap">
                           <span
                             className="font-sans text-xs text-slate-500 tabular-nums"
@@ -472,7 +482,7 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
                       </tr>
                       {expanded && (
                         <tr className="border-b border-[rgba(15,20,25,0.08)] bg-slate-50/60">
-                          <td colSpan={6} className="panel-open p-0">
+                          <td colSpan={7} className="panel-open p-0">
                             <HistoryPanel
                               app={app}
                               refreshKey={refreshKey}
@@ -658,6 +668,7 @@ function HistoryPanel({
               label="Salary"
               value={app.salary_range}
             />
+            <Detail icon={<Calendar />} label="Applied" value={formatDate(app.applied_on)} />
             <Detail icon={<CalendarClock />} label="Added" value={formatDate(app.created_at)} />
           </dl>
           {app.job_url && (
