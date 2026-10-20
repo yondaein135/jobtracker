@@ -28,3 +28,12 @@ tasks:
     cmds:
       - rm -f data/dummy.db data/dummy.db-wal data/dummy.db-shm
       - task: dev
+
+  check:
+    desc: "Run Go tests and linters"
+    dir: backend
+    cmds:
+      - go vet ./...
+      - go test ./...
+      - staticcheck ./...
+

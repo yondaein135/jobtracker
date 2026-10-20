@@ -177,6 +177,9 @@ func TestSeedDummyData_AppliedOn(t *testing.T) {
 		}
 		count++
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate rows: %v", err)
+	}
 	if count == 0 {
 		t.Fatal("expected dummy apps to be seeded")
 	}
