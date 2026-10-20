@@ -117,6 +117,103 @@
     transform: none;
   }
 }
+
+/* Sci-Fi Bootup: 4 corners expanding vertically from horizontal midline */
+@keyframes bootup-rail-top {
+  0%,
+  14% {
+    transform: translateY(calc(100% - 8px));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes bootup-rail-bottom {
+  0%,
+  14% {
+    transform: translateY(calc(-100% + 8px));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Container aperture expands vertically from center line */
+@keyframes bootup-plane-expand {
+  0%,
+  14% {
+    clip-path: inset(50% 0 50% 0);
+    opacity: 0.35;
+  }
+  99.9% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  100% {
+    clip-path: none;
+    opacity: 1;
+  }
+}
+
+/* Search bar & filter controls materialize as the horizontal line opens */
+@keyframes bootup-content-reveal {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  45% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Sci-Fi Bootup Component Utilities */
+.filter-bootup-zone {
+  position: relative;
+}
+
+.filter-bootup-plane {
+  animation: bootup-plane-expand 680ms var(--ease-smooth) both;
+}
+
+.filter-bootup-content {
+  animation: bootup-content-reveal 680ms var(--ease-smooth) both;
+}
+
+.filter-bootup-rail-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  pointer-events: none;
+  overflow: visible;
+  animation: bootup-rail-top 680ms var(--ease-smooth) both;
+}
+
+.filter-bootup-rail-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  pointer-events: none;
+  overflow: visible;
+  animation: bootup-rail-bottom 680ms var(--ease-smooth) both;
+}
+
+/* Diagnostic Cyan Corner Focus Ring */
+.filter-bootup-zone:focus-within .corner-l-bracket-tl,
+.filter-bootup-zone:focus-within .corner-l-bracket-tr,
+.filter-bootup-zone:focus-within .corner-l-bracket-bl,
+.filter-bootup-zone:focus-within .corner-l-bracket-br {
+  border-color: rgba(0, 136, 204, 0.75);
+}
 @keyframes panel-open {
   from {
     opacity: 0;

@@ -197,88 +197,96 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
         Applications
       </h2>
 
-      {/* Unboxed Filter Zone Framed with Exterior Corner L-Brackets */}
-      <div className="relative p-3 bg-white/40 backdrop-blur-xs">
-        {/* Exterior L-Brackets */}
-        <span className="corner-l-bracket-tl" />
-        <span className="corner-l-bracket-tr" />
-        <span className="corner-l-bracket-bl" />
-        <span className="corner-l-bracket-br" />
-
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* Clinical Search Input */}
-          <div className="relative lg:w-80">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-slate-400" />
-            <input
-              ref={searchRef}
-              id="search-applications"
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search company or role"
-              className="field-clinical pl-9 pr-14 font-sans text-xs"
-              aria-label="Search by company or role"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="btn-clinical-icon absolute top-1/2 right-1.5 size-6 -translate-y-1/2"
-                aria-label="Clear search"
-              >
-                <X className="size-3" />
-              </button>
-            ) : (
-              <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-slate-500">
-                /
-              </kbd>
-            )}
-          </div>
-
-          {/* Unboxed Status Filter Strip */}
-          <div
-            className="relative -mx-1 flex gap-1 overflow-x-auto px-1 py-0.5 lg:flex-wrap lg:overflow-visible"
-            role="tablist"
-            aria-label="Filter by status"
-          >
-            <span
-              className="filter-indicator"
-              style={{
-                width: chipIndicator.w,
-                height: chipIndicator.h,
-                transform: `translate(${chipIndicator.x}px, ${chipIndicator.y}px)`,
-                transitionDuration: chipIndicator.ready ? undefined : '0ms',
-                opacity: chipIndicator.w > 0 ? 1 : 0,
-              }}
-              aria-hidden
-            />
-            {chips.map((c) => {
-              const active = statusFilter === c.key
-              return (
+      {/* Unboxed Filter Zone Framed with animation */}
+      <div className="filter-bootup-zone">
+        {/* Expanding Container Body / Optical Projection Plane */}
+        <div className="filter-bootup-plane relative p-3 bg-white/40 backdrop-blur-xs">
+          {/* Content revealed as the horizontal aperture expands */}
+          <div className="filter-bootup-content flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            {/* Clinical Search Input */}
+            <div className="relative lg:w-80">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={searchRef}
+                id="search-applications"
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search company or role"
+                className="field-clinical pl-9 pr-14 font-sans text-xs"
+                aria-label="Search by company or role"
+              />
+              {search ? (
                 <button
-                  key={c.key || 'ALL'}
-                  ref={(el) => {
-                    chipRefs.current[c.key || 'ALL'] = el
-                  }}
-                  id={`filter-${c.key || 'ALL'}`}
                   type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setStatusFilter(c.key)}
-                  className={`filter-item ${active ? 'filter-item-active' : ''}`}
+                  onClick={() => setSearch('')}
+                  className="btn-clinical-icon absolute top-1/2 right-1.5 size-6 -translate-y-1/2"
+                  aria-label="Clear search"
                 >
-                  <span>{c.label}</span>
-                  <span
-                    className={`font-sans text-[11px] font-semibold tabular-nums transition-colors duration-300 ${
-                      active ? 'text-sky-200' : 'text-slate-400'
-                    }`}
-                  >
-                    [{c.count}]
-                  </span>
+                  <X className="size-3" />
                 </button>
-              )
-            })}
+              ) : (
+                <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-slate-500">
+                  /
+                </kbd>
+              )}
+            </div>
+
+            {/* Unboxed Status Filter Strip */}
+            <div
+              className="relative -mx-1 flex gap-1 overflow-x-auto px-1 py-0.5 lg:flex-wrap lg:overflow-visible"
+              role="tablist"
+              aria-label="Filter by status"
+            >
+              <span
+                className="filter-indicator"
+                style={{
+                  width: chipIndicator.w,
+                  height: chipIndicator.h,
+                  transform: `translate(${chipIndicator.x}px, ${chipIndicator.y}px)`,
+                  transitionDuration: chipIndicator.ready ? undefined : '0ms',
+                  opacity: chipIndicator.w > 0 ? 1 : 0,
+                }}
+                aria-hidden
+              />
+              {chips.map((c) => {
+                const active = statusFilter === c.key
+                return (
+                  <button
+                    key={c.key || 'ALL'}
+                    ref={(el) => {
+                      chipRefs.current[c.key || 'ALL'] = el
+                    }}
+                    id={`filter-${c.key || 'ALL'}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setStatusFilter(c.key)}
+                    className={`filter-item ${active ? 'filter-item-active' : ''}`}
+                  >
+                    <span>{c.label}</span>
+                    <span
+                      className={`font-sans text-[11px] font-semibold tabular-nums transition-colors duration-300 ${
+                        active ? 'text-sky-200' : 'text-slate-400'
+                      }`}
+                    >
+                      [{c.count}]
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
+        </div>
+
+        {/* 4 Corner L-Brackets expanding vertically from horizontal midline */}
+        <div className="filter-bootup-rail-top" aria-hidden="true">
+          <span className="corner-l-bracket-tl" />
+          <span className="corner-l-bracket-tr" />
+        </div>
+        <div className="filter-bootup-rail-bottom" aria-hidden="true">
+          <span className="corner-l-bracket-bl" />
+          <span className="corner-l-bracket-br" />
         </div>
       </div>
 
