@@ -549,11 +549,11 @@ func (h *Handler) GraphAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slices.SortStableFunc(out.SankeyLinks, func(a, b models.SankeyLink) int {
-    if diff := a.Source.Rank() - b.Source.Rank(); diff != 0 {
-        return diff
-    }
-    return a.Target.Rank() - b.Target.Rank()
-})
+		if diff := a.Source.Rank() - b.Source.Rank(); diff != 0 {
+			return diff
+		}
+		return a.Target.Rank() - b.Target.Rank()
+	})
 
 	writeJSON(w, http.StatusOK, out)
 }

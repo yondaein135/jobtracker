@@ -33,7 +33,14 @@ tasks:
     desc: "Run Go tests and linters"
     dir: backend
     cmds:
+      - gofmt -l .
       - go vet ./...
       - go test ./...
       - staticcheck ./...
+
+  fmt:
+    desc: "Format Go code"
+    dir: backend
+    cmds:
+      - gofmt -w .
 
