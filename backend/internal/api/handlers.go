@@ -10,7 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -514,13 +514,12 @@ func (h *Handler) GraphAnalytics(w http.ResponseWriter, r *http.Request) {
 		out.SankeyNodes = append(out.SankeyNodes, n)
 	}
 
-	sort.SliceStable(out.SankeyLinks, func(i, j int) bool {
-		a, b := out.SankeyLinks[i], out.SankeyLinks[j]
-		if a.Source.Rank() != b.Source.Rank() {
-			return a.Source.Rank() < b.Source.Rank()
-		}
-		return a.Target.Rank() < b.Target.Rank()
-	})
+	slices.SortStableFunc(out.SankeyLinks, func(a, b models.SankeyLink) int {
+    if diff := a.Source.Rank() - b.Source.Rank(); diff != 0 {
+        return diff
+    }
+    return a.Target.Rank() - b.Target.Rank()
+})
 
 	writeJSON(w, http.StatusOK, out)
 }
