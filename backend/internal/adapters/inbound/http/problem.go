@@ -71,6 +71,12 @@ func handleDomainError(w http.ResponseWriter, r *http.Request, logger *slog.Logg
 		return
 	}
 
+	var transErr *domain.StatusTransitionError
+	if errors.As(err, &transErr) {
+		writeProblem(w, r, http.StatusBadRequest, "Invalid Status Transition", transErr.Error())
+		return
+	}
+
 	var valErr *domain.ValidationError
 	if errors.As(err, &valErr) {
 		writeProblem(w, r, http.StatusBadRequest, "Validation Error", valErr.Message)

@@ -60,3 +60,84 @@ func (s Status) IsActive() bool {
 	}
 	return false
 }
+
+// IsTerminal reports whether s is a final outcome status from which no further transitions are allowed.
+func (s Status) IsTerminal() bool {
+	switch s {
+	case StatusAccepted, StatusRejected, StatusGhosted, StatusWithdrawn:
+		return true
+	}
+	return false
+}
+
+// allowedForwardTransitions defines the unidirectional DAG of permitted status changes.
+// - SAVED can only transition forward to APPLIED.
+// - APPLIED, RESPONSE_RECEIVED, INTERVIEWING, OFFER can transition forward to downstream stages or terminal outcomes.
+// - Terminal statuses (ACCEPTED, REJECTED, GHOSTED, WITHDRAWN) have no outgoing transitions.
+var allowedForwardTransitions = map[Status][]Status{
+	StatusSaved: {
+		StatusApplied,
+	},
+	StatusApplied: {
+		StatusResponseReceived,
+		StatusInterviewing,
+		StatusOffer,
+		StatusAccepted,
+		StatusRejected,
+		StatusGhosted,
+		StatusWithdrawn,
+	},
+	StatusResponseReceived: {
+		StatusInterviewing,
+		StatusOffer,
+		StatusAccepted,
+		StatusRejected,
+		StatusGhosted,
+		StatusWithdrawn,
+	},
+	StatusInterviewing: {
+		StatusOffer,
+		StatusAccepted,
+		StatusRejected,
+		StatusGhosted,
+		StatusWithdrawn,
+	},
+	StatusOffer: {
+		StatusAccepted,
+		StatusRejected,
+		StatusGhosted,
+		StatusWithdrawn,
+	},
+	StatusAccepted:  {},
+	StatusRejected:  {},
+	StatusGhosted:   {},
+	StatusWithdrawn: {},
+}
+
+// NextAllowedStatuses returns a slice of valid target statuses reachable from s.
+func (s Status) NextAllowedStatuses() []Status {
+	targets, ok := allowedForwardTransitions[s]
+	if !ok || len(targets) == 0 {
+		return nil
+	}
+	res := make([]Status, len(targets))
+	copy(res, targets)
+	return res
+}
+
+// CanTransitionTo reports whether an application at status s is allowed to transition to target.
+func (s Status) CanTransitionTo(target Status) bool {
+	if !target.Valid() || s == target {
+		return false
+	}
+	targets, ok := allowedForwardTransitions[s]
+	if !ok {
+		return false
+	}
+	for _, allowed := range targets {
+		if allowed == target {
+			return true
+		}
+	}
+	return false
+}

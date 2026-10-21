@@ -167,3 +167,82 @@ func TestApplicationService_PassThrough(t *testing.T) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
+
+func TestApplicationService_AddStatus_Transitions(t *testing.T) {
+	ctx := context.Background()
+
+	mock := &mockAppRepo{
+		getByIDFn: func(_ context.Context, id int64) (domain.ApplicationDetail, error) {
+			switch id {
+			case 1:
+				return domain.ApplicationDetail{Application: domain.Application{ID: 1, CurrentStatus: domain.StatusSaved}}, nil
+			case 2:
+				return domain.ApplicationDetail{Application: domain.Application{ID: 2, CurrentStatus: domain.StatusApplied}}, nil
+			case 3:
+				return domain.ApplicationDetail{Application: domain.Application{ID: 3, CurrentStatus: domain.StatusInterviewing}}, nil
+			case 4:
+				return domain.ApplicationDetail{Application: domain.Application{ID: 4, CurrentStatus: domain.StatusOffer}}, nil
+			case 5:
+				return domain.ApplicationDetail{Application: domain.Application{ID: 5, CurrentStatus: domain.StatusRejected}}, nil
+			default:
+				return domain.ApplicationDetail{}, domain.ErrNotFound
+			}
+		},
+		addStatusFn: func(_ context.Context, id int64, s domain.Status, notes string, changed time.Time) (domain.ApplicationDetail, error) {
+			return domain.ApplicationDetail{Application: domain.Application{ID: id, CurrentStatus: s}}, nil
+		},
+	}
+	svc := app.NewApplicationService(mock)
+
+	// Valid forward transitions
+	validCases := []struct {
+		id int64
+		to domain.Status
+	}{
+		{1, domain.StatusApplied},
+		{2, domain.StatusResponseReceived},
+		{2, domain.StatusInterviewing},
+		{2, domain.StatusRejected},
+		{3, domain.StatusOffer},
+		{3, domain.StatusGhosted},
+		{4, domain.StatusAccepted},
+	}
+	for _, tc := range validCases {
+		res, err := svc.AddStatus(ctx, tc.id, ports.AddStatusCommand{Status: tc.to})
+		if err != nil {
+			t.Errorf("expected valid transition for app %d to %s, got err: %v", tc.id, tc.to, err)
+		}
+		if res.Application.CurrentStatus != tc.to {
+			t.Errorf("expected new status %s, got %s", tc.to, res.Application.CurrentStatus)
+		}
+	}
+
+	// Invalid transitions (backward, self, or from terminal)
+	invalidCases := []struct {
+		id int64
+		to domain.Status
+	}{
+		{1, domain.StatusInterviewing},     // SAVED can only go to APPLIED
+		{1, domain.StatusSaved},            // self
+		{2, domain.StatusSaved},            // backward
+		{2, domain.StatusApplied},          // self
+		{3, domain.StatusApplied},          // backward
+		{3, domain.StatusResponseReceived}, // backward
+		{4, domain.StatusInterviewing},     // backward
+		{5, domain.StatusInterviewing},     // from terminal REJECTED
+		{5, domain.StatusAccepted},         // from terminal REJECTED
+	}
+	for _, tc := range invalidCases {
+		_, err := svc.AddStatus(ctx, tc.id, ports.AddStatusCommand{Status: tc.to})
+		if err == nil {
+			t.Errorf("expected transition error for app %d to %s, got nil", tc.id, tc.to)
+		}
+		var transErr *domain.StatusTransitionError
+		if !errors.As(err, &transErr) {
+			t.Errorf("expected *domain.StatusTransitionError, got %T: %v", err, err)
+		}
+		if !errors.Is(err, domain.ErrInvalidTransition) {
+			t.Errorf("expected errors.Is(err, domain.ErrInvalidTransition), got false")
+		}
+	}
+}

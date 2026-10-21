@@ -1,7 +1,7 @@
-import { Check, ChevronDown, Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { STATUSES, STATUS_META, type Status } from '../types'
+import { STATUS_META, getNextAllowedStatuses, type Status } from '../types'
 
 interface StatusBadgeProps {
   status: Status
@@ -34,6 +34,7 @@ interface StatusSelectProps {
   busy?: boolean
   disabled?: boolean
   id?: string
+  allowedStatuses?: readonly Status[]
 }
 
 const POPOVER_WIDTH = 250
@@ -41,12 +42,16 @@ const POPOVER_MAX_HEIGHT = 380
 
 /**
  * Inline clinical status selector with keyboard navigation and unboxed popover.
+ * Strictly presents allowed forward transitions according to the unidirectional pipeline flow.
  */
-export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSelectProps) {
+export function StatusSelect({ value, onChange, busy, disabled, id, allowedStatuses }: StatusSelectProps) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const allowed = allowedStatuses ?? getNextAllowedStatuses(value)
+  const isTerminal = allowed.length === 0
 
   const close = useCallback(() => setOpen(false), [])
 
@@ -88,7 +93,7 @@ export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSele
 
   useEffect(() => {
     if (open && pos) {
-      menuRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus()
+      menuRef.current?.querySelector<HTMLButtonElement>('[role="option"]')?.focus()
     }
   }, [open, pos])
 
@@ -96,6 +101,7 @@ export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSele
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
     e.preventDefault()
     const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])
+    if (items.length === 0) return
     const idx = items.indexOf(document.activeElement as HTMLButtonElement)
     const next = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length
     items[next]?.focus()
@@ -113,53 +119,56 @@ export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSele
         ref={buttonRef}
         id={id}
         type="button"
-        disabled={disabled || busy}
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="group inline-flex cursor-pointer items-center gap-1.5 transition-all outline-none focus-visible:ring-1 focus-visible:ring-[#0088cc] disabled:cursor-wait"
+        disabled={disabled || busy || isTerminal}
+        onClick={() => {
+          if (!isTerminal) setOpen((o) => !o)
+        }}
+        aria-haspopup={!isTerminal ? 'listbox' : undefined}
+        aria-expanded={!isTerminal ? open : undefined}
+        className={`group inline-flex items-center gap-1.5 transition-all outline-none ${
+          !isTerminal ? 'cursor-pointer focus-visible:ring-1 focus-visible:ring-[#0088cc]' : 'cursor-default'
+        } disabled:cursor-not-allowed`}
+        title={isTerminal ? `${STATUS_META[value].label} (Terminal stage)` : 'Advance stage'}
       >
         <StatusBadge status={value} />
         {busy ? (
           <Loader2 className="size-3 animate-spin text-slate-500" />
-        ) : (
+        ) : !isTerminal ? (
           <ChevronDown
             className={`size-3 text-slate-400 transition-transform duration-150 group-hover:text-slate-700 ${
               open ? 'rotate-180' : ''
             }`}
           />
-        )}
+        ) : null}
       </button>
 
       {open &&
         pos &&
+        allowed.length > 0 &&
         createPortal(
           <div
             ref={menuRef}
             role="listbox"
-            aria-label="Change status"
+            aria-label="Advance status"
             onKeyDown={onMenuKeyDown}
             style={{ top: pos.top, left: pos.left, width: POPOVER_WIDTH, maxHeight: POPOVER_MAX_HEIGHT }}
             className="animate-pop-in fixed z-50 overflow-y-auto bg-white p-1 shadow-xl border border-slate-300/80 text-slate-800"
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-2.5 py-1.5 text-[10px] font-sans font-semibold tracking-widest text-slate-400 uppercase">
-              <span>Transition Stage</span>
+              <span>Next Stage</span>
               <span>[ ESC ]</span>
             </div>
             <div className="py-1">
-              {STATUSES.map((s) => {
+              {allowed.map((s) => {
                 const meta = STATUS_META[s]
-                const selected = s === value
                 return (
                   <button
                     key={s}
                     type="button"
                     role="option"
-                    aria-selected={selected}
+                    aria-selected={false}
                     onClick={() => pick(s)}
-                    className={`flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors outline-none hover:bg-slate-100/80 focus:bg-slate-100 ${
-                      selected ? 'bg-slate-100/90 font-medium' : ''
-                    }`}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors outline-none hover:bg-slate-100/80 focus:bg-slate-100"
                   >
                     <span
                       className={`size-1.5 shrink-0 ${meta.dot}`}
@@ -173,7 +182,6 @@ export function StatusSelect({ value, onChange, busy, disabled, id }: StatusSele
                         {meta.description}
                       </span>
                     </span>
-                    {selected && <Check className="size-3.5 shrink-0 text-[#0088cc]" />}
                   </button>
                 )
               })}

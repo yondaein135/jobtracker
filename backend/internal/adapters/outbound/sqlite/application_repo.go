@@ -202,12 +202,31 @@ func (r *ApplicationRepository) AddStatus(ctx context.Context, id int64, status 
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	var exists int
-	if err := tx.QueryRowContext(ctx, "SELECT 1 FROM applications WHERE id = ?", id).Scan(&exists); err != nil {
+	var currentStatus domain.Status
+	if err := tx.QueryRowContext(ctx, `
+		SELECT status
+		FROM application_status_history
+		WHERE application_id = ?
+		ORDER BY changed_at DESC, id DESC
+		LIMIT 1`, id).Scan(&currentStatus); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			var exists int
+			if errApp := tx.QueryRowContext(ctx, "SELECT 1 FROM applications WHERE id = ?", id).Scan(&exists); errApp != nil {
+				if errors.Is(errApp, sql.ErrNoRows) {
+					return domain.ApplicationDetail{}, domain.ErrNotFound
+				}
+				return domain.ApplicationDetail{}, fmt.Errorf("check application exists: %w", errApp)
+			}
 			return domain.ApplicationDetail{}, domain.ErrNotFound
 		}
-		return domain.ApplicationDetail{}, fmt.Errorf("check application exists: %w", err)
+		return domain.ApplicationDetail{}, fmt.Errorf("check current status: %w", err)
+	}
+
+	if !currentStatus.CanTransitionTo(status) {
+		return domain.ApplicationDetail{}, &domain.StatusTransitionError{
+			From: currentStatus,
+			To:   status,
+		}
 	}
 
 	changedAtStr := changedAt.UTC().Format(dbTimeLayout)

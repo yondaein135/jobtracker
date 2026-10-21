@@ -193,6 +193,18 @@ func (s *ApplicationService) AddStatus(ctx context.Context, id int64, cmd ports.
 		changedAt = cmd.ChangedAt.UTC()
 	}
 
+	detail, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return domain.ApplicationDetail{}, err
+	}
+
+	if !detail.Application.CurrentStatus.CanTransitionTo(cmd.Status) {
+		return domain.ApplicationDetail{}, &domain.StatusTransitionError{
+			From: detail.Application.CurrentStatus,
+			To:   cmd.Status,
+		}
+	}
+
 	return s.repo.AddStatus(ctx, id, cmd.Status, cmd.Notes, changedAt)
 }
 

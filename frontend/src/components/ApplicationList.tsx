@@ -18,7 +18,7 @@ import {
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { api } from '../api/client'
 import { durationBetween, formatDate, formatDateTime, relativeTime, toLocalInputValue } from '../lib/format'
-import { STATUSES, STATUS_META, type Application, type ApplicationDetail, type Status } from '../types'
+import { STATUSES, STATUS_META, getNextAllowedStatuses, type Application, type ApplicationDetail, type Status } from '../types'
 import StatusBadge, { StatusSelect } from './StatusBadge'
 
 export type Notify = (message: string, kind?: 'success' | 'error') => void
@@ -121,6 +121,11 @@ export default function ApplicationList({ refreshKey, onChanged, onEdit, onCreat
     })
 
   const changeStatus = async (app: Application, status: Status) => {
+    const allowed = getNextAllowedStatuses(app.current_status)
+    if (!allowed.includes(status)) {
+      notify(`Cannot transition from ${STATUS_META[app.current_status].label} to ${STATUS_META[status].label}`, 'error')
+      return
+    }
     const previous = app
     setBusyFor(app.id, true)
     // Optimistic update.
@@ -532,11 +537,16 @@ function HistoryPanel({
 }) {
   const [detail, setDetail] = useState<ApplicationDetail | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [status, setStatus] = useState<Status>(app.current_status)
+  const currentStatus = detail?.current_status ?? app.current_status
+  const allowedStatuses = useMemo(() => getNextAllowedStatuses(currentStatus), [currentStatus])
+  const isTerminal = allowedStatuses.length === 0
+  const [status, setStatus] = useState<Status>(allowedStatuses[0] ?? currentStatus)
+  const effectiveStatus = allowedStatuses.includes(status) ? status : (allowedStatuses[0] ?? currentStatus)
   const [notes, setNotes] = useState('')
   const [date, setDate] = useState(() => toLocalInputValue())
   const [dateTouched, setDateTouched] = useState(false)
   const [saving, setSaving] = useState(false)
+  const maxDate = useMemo(() => toLocalInputValue(new Date(Date.now() + 86400000)), [])
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -554,16 +564,16 @@ function HistoryPanel({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (saving) return
+    if (saving || isTerminal) return
     setSaving(true)
     try {
       const changed_at = dateTouched && date ? new Date(date).toISOString() : undefined
-      const d = await api.addStatus(app.id, { status, notes: notes.trim(), changed_at })
+      const d = await api.addStatus(app.id, { status: effectiveStatus, notes: notes.trim(), changed_at })
       setDetail(d)
       setNotes('')
       setDate(toLocalInputValue())
       setDateTouched(false)
-      notify(`Logged ${STATUS_META[status].label} for ${app.company_name}`)
+      notify(`Logged ${STATUS_META[effectiveStatus].label} for ${app.company_name}`)
       onChanged()
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Failed to log status', 'error')
@@ -701,71 +711,82 @@ function HistoryPanel({
         </div>
 
         {/* Transition Log Form */}
-        <form
-          onSubmit={submit}
-          className="border border-slate-300/80 bg-white p-4"
-        >
-          <h3 className="mb-3 font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-            Log status change
-          </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor={`${fieldId}-status`} className="field-label">
-                Status
-              </label>
-              <select
-                id={`${fieldId}-status`}
-                className="field-clinical font-sans text-xs uppercase"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Status)}
+        {isTerminal ? (
+          <div className="border border-slate-300/80 bg-slate-50/70 p-4 font-sans">
+            <h3 className="mb-2 font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
+              Application Lifecycle Complete
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              This application has reached terminal status <span className="font-semibold text-slate-800">{STATUS_META[currentStatus].label}</span>. No further forward status changes can be logged.
+            </p>
+          </div>
+        ) : (
+          <form
+            onSubmit={submit}
+            className="border border-slate-300/80 bg-white p-4"
+          >
+            <h3 className="mb-3 font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
+              Log forward status change
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor={`${fieldId}-status`} className="field-label">
+                  Next Status
+                </label>
+                <select
+                  id={`${fieldId}-status`}
+                  className="field-clinical font-sans text-xs uppercase"
+                  value={effectiveStatus}
+                  onChange={(e) => setStatus(e.target.value as Status)}
+                >
+                  {allowedStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_META[s].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor={`${fieldId}-date`} className="field-label">
+                  Date
+                </label>
+                <input
+                  id={`${fieldId}-date`}
+                  type="datetime-local"
+                  className="field-clinical font-sans text-xs"
+                  value={date}
+                  max={maxDate}
+                  onChange={(e) => {
+                    setDate(e.target.value)
+                    setDateTouched(true)
+                  }}
+                />
+              </div>
+            </div>
+            <label htmlFor={`${fieldId}-notes`} className="field-label mt-3">
+              Note
+            </label>
+            <input
+              id={`${fieldId}-notes`}
+              className="field-clinical"
+              placeholder="e.g. Completed initial recruiter screen"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={20000}
+            />
+            <div className="mt-3 flex justify-end">
+              <button
+                type="submit"
+                className="btn-clinical btn-clinical-primary"
+                disabled={saving || allowedStatuses.length === 0}
+                id={`${fieldId}-submit`}
               >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_META[s].label}
-                  </option>
-                ))}
-              </select>
+                {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                <span>Log status</span>
+              </button>
             </div>
-            <div>
-              <label htmlFor={`${fieldId}-date`} className="field-label">
-                Date
-              </label>
-              <input
-                id={`${fieldId}-date`}
-                type="datetime-local"
-                className="field-clinical font-sans text-xs"
-                value={date}
-                max={toLocalInputValue(new Date(Date.now() + 86400000))}
-                onChange={(e) => {
-                  setDate(e.target.value)
-                  setDateTouched(true)
-                }}
-              />
-            </div>
-          </div>
-          <label htmlFor={`${fieldId}-notes`} className="field-label mt-3">
-            Note
-          </label>
-          <input
-            id={`${fieldId}-notes`}
-            className="field-clinical"
-            placeholder="e.g. Completed initial recruiter screen"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={20000}
-          />
-          <div className="mt-3 flex justify-end">
-            <button
-              type="submit"
-              className="btn-clinical btn-clinical-primary"
-              disabled={saving}
-              id={`${fieldId}-submit`}
-            >
-              {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-              <span>Log status</span>
-            </button>
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   )

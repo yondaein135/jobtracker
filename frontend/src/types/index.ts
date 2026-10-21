@@ -19,6 +19,30 @@ export type InitialStatus = (typeof INITIAL_STATUSES)[number]
 /** Statuses that represent an in-flight application. */
 export const ACTIVE_STATUSES: readonly Status[] = ['APPLIED', 'RESPONSE_RECEIVED', 'INTERVIEWING', 'OFFER']
 
+/**
+ * Directional forward transitions allowed in the application pipeline.
+ * All changes are strictly unidirectional and terminal statuses cannot transition further.
+ */
+export const ALLOWED_FORWARD_TRANSITIONS: Record<Status, readonly Status[]> = {
+  SAVED: ['APPLIED'],
+  APPLIED: ['RESPONSE_RECEIVED', 'INTERVIEWING', 'OFFER', 'ACCEPTED', 'REJECTED', 'GHOSTED', 'WITHDRAWN'],
+  RESPONSE_RECEIVED: ['INTERVIEWING', 'OFFER', 'ACCEPTED', 'REJECTED', 'GHOSTED', 'WITHDRAWN'],
+  INTERVIEWING: ['OFFER', 'ACCEPTED', 'REJECTED', 'GHOSTED', 'WITHDRAWN'],
+  OFFER: ['ACCEPTED', 'REJECTED', 'GHOSTED', 'WITHDRAWN'],
+  ACCEPTED: [],
+  REJECTED: [],
+  GHOSTED: [],
+  WITHDRAWN: [],
+}
+
+export function getNextAllowedStatuses(current: Status): readonly Status[] {
+  return ALLOWED_FORWARD_TRANSITIONS[current] ?? []
+}
+
+export function isTerminalStatus(status: Status): boolean {
+  return ALLOWED_FORWARD_TRANSITIONS[status]?.length === 0
+}
+
 export interface StatusMeta {
   label: string
   description: string
@@ -118,6 +142,7 @@ export interface Application {
   created_at: string
   current_status: Status
   status_updated_at: string
+  next_allowed_statuses?: Status[]
 }
 
 export interface StatusHistoryEntry {

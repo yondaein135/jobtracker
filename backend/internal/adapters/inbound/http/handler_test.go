@@ -277,3 +277,104 @@ func TestHealth(t *testing.T) {
 		t.Fatalf("expected 200 OK for health, got %d", rec.Code)
 	}
 }
+
+func TestStatusTransitions_DirectionalFlow(t *testing.T) {
+	harness := setupTestHarness(t)
+
+	// Create application at SAVED
+	createPayload := map[string]any{
+		"company_name":   "Flow Corp",
+		"role_title":     "Platform Engineer",
+		"initial_status": "SAVED",
+	}
+	body, _ := json.Marshal(createPayload)
+	req := httptest.NewRequest(http.MethodPost, "/api/applications", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create failed: %s", rec.Body.String())
+	}
+
+	var created httpadapter.ApplicationDetailResponse
+	_ = json.Unmarshal(rec.Body.Bytes(), &created)
+	appID := created.ID
+
+	// 1. Invalid: Cannot jump from SAVED directly to INTERVIEWING
+	badReq := map[string]any{"status": "INTERVIEWING"}
+	b, _ := json.Marshal(badReq)
+	req = httptest.NewRequest(http.MethodPost, "/api/applications/1/status", bytes.NewReader(b))
+	rec = httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 on SAVED -> INTERVIEWING, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 2. Valid: SAVED -> APPLIED
+	validReq := map[string]any{"status": "APPLIED"}
+	b, _ = json.Marshal(validReq)
+	req = httptest.NewRequest(http.MethodPost, "/api/applications/1/status", bytes.NewReader(b))
+	rec = httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 on SAVED -> APPLIED, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 3. Invalid: APPLIED -> SAVED (backward transition)
+	badReq = map[string]any{"status": "SAVED"}
+	b, _ = json.Marshal(badReq)
+	req = httptest.NewRequest(http.MethodPost, "/api/applications/1/status", bytes.NewReader(b))
+	rec = httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 on backward APPLIED -> SAVED, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Verify RFC 9457 Problem Details JSON format
+	var prob httpadapter.ProblemDetails
+	_ = json.Unmarshal(rec.Body.Bytes(), &prob)
+	if !strings.Contains(prob.Title, "Invalid Status Transition") {
+		t.Errorf("expected Title to contain 'Invalid Status Transition', got %q", prob.Title)
+	}
+
+	// 4. Valid skip: APPLIED -> INTERVIEWING (skipping response)
+	validReq = map[string]any{"status": "INTERVIEWING"}
+	b, _ = json.Marshal(validReq)
+	req = httptest.NewRequest(http.MethodPost, "/api/applications/1/status", bytes.NewReader(b))
+	rec = httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 on APPLIED -> INTERVIEWING, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 5. Invalid: INTERVIEWING -> RESPONSE_RECEIVED (backward)
+	badReq = map[string]any{"status": "RESPONSE_RECEIVED"}
+	b, _ = json.Marshal(badReq)
+	req = httptest.NewRequest(http.MethodPost, "/api/applications/1/status", bytes.NewReader(b))
+	rec = httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 on backward INTERVIEWING -> RESPONSE_RECEIVED, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 6. Valid terminal outcome: INTERVIEWING -> REJECTED
+	validReq = map[string]any{"status": "REJECTED"}
+	b, _ = json.Marshal(validReq)
+	req = httptest.NewRequest(http.MethodPost, "/api/applications/1/status", bytes.NewReader(b))
+	rec = httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 on INTERVIEWING -> REJECTED, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 7. Invalid: REJECTED is terminal, cannot transition to anything
+	badReq = map[string]any{"status": "OFFER"}
+	b, _ = json.Marshal(badReq)
+	req = httptest.NewRequest(http.MethodPost, "/api/applications/1/status", bytes.NewReader(b))
+	rec = httptest.NewRecorder()
+	harness.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 on transition from terminal REJECTED, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	_ = appID
+}

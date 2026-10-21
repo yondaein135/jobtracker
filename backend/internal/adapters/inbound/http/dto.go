@@ -40,18 +40,19 @@ type StatusChangeRequest struct {
 
 // ApplicationResponse is the JSON representation of an application.
 type ApplicationResponse struct {
-	ID              int64         `json:"id"`
-	CompanyName     string        `json:"company_name"`
-	RoleTitle       string        `json:"role_title"`
-	Location        string        `json:"location"`
-	JobURL          string        `json:"job_url"`
-	SalaryRange     string        `json:"salary_range"`
-	Notes           string        `json:"notes"`
-	JobDescription  string        `json:"job_description"`
-	AppliedOn       string        `json:"applied_on"`
-	CreatedAt       string        `json:"created_at"`
-	CurrentStatus   domain.Status `json:"current_status"`
-	StatusUpdatedAt string        `json:"status_updated_at"`
+	ID                  int64           `json:"id"`
+	CompanyName         string          `json:"company_name"`
+	RoleTitle           string          `json:"role_title"`
+	Location            string          `json:"location"`
+	JobURL              string          `json:"job_url"`
+	SalaryRange         string          `json:"salary_range"`
+	Notes               string          `json:"notes"`
+	JobDescription      string          `json:"job_description"`
+	AppliedOn           string          `json:"applied_on"`
+	CreatedAt           string          `json:"created_at"`
+	CurrentStatus       domain.Status   `json:"current_status"`
+	StatusUpdatedAt     string          `json:"status_updated_at"`
+	NextAllowedStatuses []domain.Status `json:"next_allowed_statuses"`
 }
 
 // StatusHistoryResponse is the JSON representation of a status history entry.
@@ -96,19 +97,24 @@ type GraphAnalyticsResponse struct {
 }
 
 func toApplicationResponse(a domain.Application) ApplicationResponse {
+	nextStatuses := a.CurrentStatus.NextAllowedStatuses()
+	if nextStatuses == nil {
+		nextStatuses = []domain.Status{}
+	}
 	return ApplicationResponse{
-		ID:              a.ID,
-		CompanyName:     a.CompanyName,
-		RoleTitle:       a.RoleTitle,
-		Location:        a.Location,
-		JobURL:          a.JobURL,
-		SalaryRange:     a.SalaryRange,
-		Notes:           a.Notes,
-		JobDescription:  a.JobDescription,
-		AppliedOn:       formatRFC3339(a.AppliedOn),
-		CreatedAt:       formatRFC3339(a.CreatedAt),
-		CurrentStatus:   a.CurrentStatus,
-		StatusUpdatedAt: formatRFC3339(a.StatusUpdatedAt),
+		ID:                  a.ID,
+		CompanyName:         a.CompanyName,
+		RoleTitle:           a.RoleTitle,
+		Location:            a.Location,
+		JobURL:              a.JobURL,
+		SalaryRange:         a.SalaryRange,
+		Notes:               a.Notes,
+		JobDescription:      a.JobDescription,
+		AppliedOn:           formatRFC3339(a.AppliedOn),
+		CreatedAt:           formatRFC3339(a.CreatedAt),
+		CurrentStatus:       a.CurrentStatus,
+		StatusUpdatedAt:     formatRFC3339(a.StatusUpdatedAt),
+		NextAllowedStatuses: nextStatuses,
 	}
 }
 
