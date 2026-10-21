@@ -1,5 +1,4 @@
-// Package db owns the SQLite connection lifecycle and schema migrations.
-package db
+package sqlite
 
 import (
 	"context"
@@ -19,8 +18,7 @@ import (
 var schemaSQL string
 
 // migrations holds incremental, versioned schema changes applied after the
-// baseline schema. Each entry bumps PRAGMA user_version by one. Append new
-// statements here; never edit or reorder existing entries.
+// baseline schema. Each entry bumps PRAGMA user_version by one.
 var migrations = []string{
 	// v1: baseline schema (schema.sql) — nothing extra to apply.
 	``,
@@ -66,8 +64,7 @@ func Open(path string) (*sql.DB, error) {
 	return conn, nil
 }
 
-// Migrate applies the embedded baseline schema (idempotent) and then any
-// pending versioned migrations, tracked via PRAGMA user_version.
+// Migrate applies the embedded baseline schema and pending versioned migrations.
 func Migrate(ctx context.Context, conn *sql.DB) error {
 	// The baseline contains PRAGMA journal_mode, which cannot run inside a
 	// transaction, so it is executed directly. All statements are IF NOT EXISTS.
@@ -90,7 +87,7 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 			if strings.Contains(migrations[i], "job_description") {
 				exists, err := columnExists(ctx, tx, "applications", "job_description")
 				if err != nil {
-					tx.Rollback()
+					_ = tx.Rollback()
 					return fmt.Errorf("check column job_description: %w", err)
 				}
 				if exists {
@@ -100,7 +97,7 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 			if strings.Contains(migrations[i], "applied_on") {
 				exists, err := columnExists(ctx, tx, "applications", "applied_on")
 				if err != nil {
-					tx.Rollback()
+					_ = tx.Rollback()
 					return fmt.Errorf("check column applied_on: %w", err)
 				}
 				if exists {
@@ -109,14 +106,14 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 			}
 			if apply {
 				if _, err := tx.ExecContext(ctx, migrations[i]); err != nil {
-					tx.Rollback()
+					_ = tx.Rollback()
 					return fmt.Errorf("apply migration %d: %w", i+1, err)
 				}
 			}
 		}
 		// PRAGMA does not accept bound parameters; i is a trusted integer.
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("bump user_version to %d: %w", i+1, err)
 		}
 		if err := tx.Commit(); err != nil {
@@ -152,7 +149,6 @@ func columnExists(ctx context.Context, tx *sql.Tx, table, col string) (bool, err
 	return false, rows.Err()
 }
 
-// verify asserts that the connection-level guarantees we rely on are active.
 func verify(ctx context.Context, conn *sql.DB) error {
 	var fk int
 	if err := conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&fk); err != nil {

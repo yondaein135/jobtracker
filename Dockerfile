@@ -7,12 +7,12 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Build Go Backend (CGO-free SQLite)
-FROM golang:1.23-alpine AS backend-builder
+FROM golang:1.27-alpine AS backend-builder
 WORKDIR /app/backend
 COPY backend/go.* ./
 RUN go mod download
 COPY backend/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/api
 
 # Stage 3: Final Runtime Image
 FROM alpine:3.20
