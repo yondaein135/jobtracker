@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { api } from '../api/client'
-import { durationBetween, formatDate, formatDateTime, relativeTime, toLocalInputValue } from '../lib/format'
+import { durationBetween, formatDate, formatDateTime, relativeTime } from '../lib/format'
 import { STATUSES, STATUS_META, getNextAllowedStatuses, type Application, type ApplicationDetail, type Status } from '../types'
 import StatusBadge, { StatusSelect } from './StatusBadge'
 
@@ -543,10 +543,7 @@ function HistoryPanel({
   const [status, setStatus] = useState<Status>(allowedStatuses[0] ?? currentStatus)
   const effectiveStatus = allowedStatuses.includes(status) ? status : (allowedStatuses[0] ?? currentStatus)
   const [notes, setNotes] = useState('')
-  const [date, setDate] = useState(() => toLocalInputValue())
-  const [dateTouched, setDateTouched] = useState(false)
   const [saving, setSaving] = useState(false)
-  const maxDate = useMemo(() => toLocalInputValue(new Date(Date.now() + 86400000)), [])
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -567,12 +564,9 @@ function HistoryPanel({
     if (saving || isTerminal) return
     setSaving(true)
     try {
-      const changed_at = dateTouched && date ? new Date(date).toISOString() : undefined
-      const d = await api.addStatus(app.id, { status: effectiveStatus, notes: notes.trim(), changed_at })
+      const d = await api.addStatus(app.id, { status: effectiveStatus, notes: notes.trim() })
       setDetail(d)
       setNotes('')
-      setDate(toLocalInputValue())
-      setDateTouched(false)
       notify(`Logged ${STATUS_META[effectiveStatus].label} for ${app.company_name}`)
       onChanged()
     } catch (err) {
@@ -728,41 +722,21 @@ function HistoryPanel({
             <h3 className="mb-3 font-sans text-[11px] font-bold tracking-wider text-slate-500 uppercase">
               Log forward status change
             </h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label htmlFor={`${fieldId}-status`} className="field-label">
-                  Next Status
-                </label>
-                <select
-                  id={`${fieldId}-status`}
-                  className="field-clinical font-sans text-xs uppercase"
-                  value={effectiveStatus}
-                  onChange={(e) => setStatus(e.target.value as Status)}
-                >
-                  {allowedStatuses.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_META[s].label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor={`${fieldId}-date`} className="field-label">
-                  Date
-                </label>
-                <input
-                  id={`${fieldId}-date`}
-                  type="datetime-local"
-                  className="field-clinical font-sans text-xs"
-                  value={date}
-                  max={maxDate}
-                  onChange={(e) => {
-                    setDate(e.target.value)
-                    setDateTouched(true)
-                  }}
-                />
-              </div>
-            </div>
+            <label htmlFor={`${fieldId}-status`} className="field-label">
+              Next Status
+            </label>
+            <select
+              id={`${fieldId}-status`}
+              className="field-clinical font-sans text-xs uppercase"
+              value={effectiveStatus}
+              onChange={(e) => setStatus(e.target.value as Status)}
+            >
+              {allowedStatuses.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_META[s].label}
+                </option>
+              ))}
+            </select>
             <label htmlFor={`${fieldId}-notes`} className="field-label mt-3">
               Note
             </label>

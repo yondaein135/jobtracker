@@ -90,81 +90,132 @@ func TestCreateApplication_DefaultAppliedOn(t *testing.T) {
 	}
 }
 
-func TestCreateApplication_CustomAppliedOn(t *testing.T) {
+func doJSON(t *testing.T, h http.Handler, method, path string, payload any) *httptest.ResponseRecorder {
+	t.Helper()
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	r := httptest.NewRequest(method, path, bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	return w
+}
+
+func TestCreateApplication_RejectsDates(t *testing.T) {
 	harness := setupTestHarness(t)
 
-	customDate := "2026-10-12"
-	reqBody := map[string]any{
-		"company_name":   "Custom Corp",
-		"role_title":     "Backend Lead",
-		"initial_status": "APPLIED",
-		"applied_on":     customDate,
+	w := doJSON(t, harness.router, http.MethodPost, "/api/applications", map[string]any{
+		"company_name": "Acme", "role_title": "Engineer", "applied_on": "2026-10-12",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for applied_on on create, got %d: %s", w.Code, w.Body.String())
 	}
-	body, _ := json.Marshal(reqBody)
 
-	r := httptest.NewRequest(http.MethodPost, "/api/applications", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	harness.handler.CreateApplication(w, r)
-
+	w = doJSON(t, harness.router, http.MethodPost, "/api/applications", map[string]any{
+		"company_name": "Acme", "role_title": "Engineer",
+	})
 	if w.Code != http.StatusCreated {
-		t.Fatalf("expected status 201, got %d: %s", w.Code, w.Body.String())
+		t.Fatalf("create: expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	w = doJSON(t, harness.router, http.MethodPost, "/api/applications/1/status", map[string]any{
+		"status": "INTERVIEWING", "changed_at": "2026-10-01",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for changed_at on status change, got %d: %s", w.Code, w.Body.String())
+	}
+
+	w = doJSON(t, harness.router, http.MethodPatch, "/api/applications/1", map[string]any{
+		"applied_on": "2026-09-01",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for applied_on on update, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestBackfillApplication(t *testing.T) {
+	harness := setupTestHarness(t)
+
+	w := doJSON(t, harness.router, http.MethodPost, "/api/applications/backfill", map[string]any{
+		"company_name": "Past Corp",
+		"role_title":   "Backend Lead",
+		"history": []map[string]any{
+			{"status": "SAVED", "changed_at": "2026-08-30"},
+			{"status": "APPLIED", "changed_at": "2026-09-01"},
+			{"status": "INTERVIEWING", "changed_at": "2026-09-10T14:00:00Z", "notes": "Tech round"},
+			{"status": "REJECTED", "changed_at": "2026-09-20"},
+		},
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
 	}
 
 	var detail httpadapter.ApplicationDetailResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &detail); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
+		t.Fatalf("unmarshal: %v", err)
 	}
-
-	if !strings.HasPrefix(detail.AppliedOn, "2026-10-12") {
-		t.Fatalf("expected applied_on to be 2026-10-12..., got %s", detail.AppliedOn)
+	if detail.CurrentStatus != domain.StatusRejected {
+		t.Errorf("expected current status REJECTED, got %s", detail.CurrentStatus)
 	}
-
-	// Initial status history changed_at should match applied_on
-	if len(detail.History) == 0 {
-		t.Fatal("expected history to have initial status entry")
+	if !strings.HasPrefix(detail.AppliedOn, "2026-09-01") {
+		t.Errorf("expected applied_on from the APPLIED step, got %s", detail.AppliedOn)
 	}
-	if !strings.HasPrefix(detail.History[0].ChangedAt, "2026-10-12") {
-		t.Fatalf("expected history changed_at to match applied_on, got %s", detail.History[0].ChangedAt)
+	if !strings.HasPrefix(detail.StatusUpdatedAt, "2026-09-20") {
+		t.Errorf("expected status_updated_at from the last step, got %s", detail.StatusUpdatedAt)
+	}
+	wantOrder := []domain.Status{domain.StatusSaved, domain.StatusApplied, domain.StatusInterviewing, domain.StatusRejected}
+	if len(detail.History) != len(wantOrder) {
+		t.Fatalf("expected %d history entries, got %d", len(wantOrder), len(detail.History))
+	}
+	for i, s := range wantOrder {
+		if detail.History[i].Status != s {
+			t.Errorf("history[%d]: expected %s, got %s", i, s, detail.History[i].Status)
+		}
+	}
+	if detail.History[2].Notes != "Tech round" {
+		t.Errorf("expected note on interview step, got %q", detail.History[2].Notes)
 	}
 }
 
-func TestUpdateApplication_AppliedOn(t *testing.T) {
+func TestBackfillApplication_Invalid(t *testing.T) {
 	harness := setupTestHarness(t)
-
-	// Create an app first
-	createReq := map[string]any{
-		"company_name":   "Update Corp",
-		"role_title":     "DevOps Engineer",
-		"initial_status": "APPLIED",
-	}
-	b, _ := json.Marshal(createReq)
-	r := httptest.NewRequest(http.MethodPost, "/api/applications", bytes.NewReader(b))
-	w := httptest.NewRecorder()
-	harness.handler.CreateApplication(w, r)
-
-	var created httpadapter.ApplicationDetailResponse
-	_ = json.Unmarshal(w.Body.Bytes(), &created)
-
-	// Now patch applied_on
-	newDate := "2026-09-01T10:00:00Z"
-	patchReq := map[string]any{
-		"applied_on": newDate,
-	}
-	pb, _ := json.Marshal(patchReq)
-	pr := httptest.NewRequest(http.MethodPatch, "/api/applications/1", bytes.NewReader(pb))
-	pr.SetPathValue("id", "1")
-	pw := httptest.NewRecorder()
-	harness.handler.UpdateApplication(pw, pr)
-
-	if pw.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d: %s", pw.Code, pw.Body.String())
+	base := func(history []map[string]any) map[string]any {
+		return map[string]any{"company_name": "Acme", "role_title": "Engineer", "history": history}
 	}
 
-	var updated httpadapter.ApplicationDetailResponse
-	_ = json.Unmarshal(pw.Body.Bytes(), &updated)
-	if !strings.HasPrefix(updated.AppliedOn, "2026-09-01") {
-		t.Fatalf("expected updated applied_on to be 2026-09-01..., got %s", updated.AppliedOn)
+	cases := []struct {
+		name    string
+		history []map[string]any
+	}{
+		{"empty history", []map[string]any{}},
+		{"bad date", []map[string]any{{"status": "APPLIED", "changed_at": "last tuesday"}}},
+		{"missing date", []map[string]any{{"status": "APPLIED"}}},
+		{"future date", []map[string]any{{"status": "APPLIED", "changed_at": "2999-01-01"}}},
+		{"starts mid-pipeline", []map[string]any{{"status": "OFFER", "changed_at": "2026-09-01"}}},
+		{"backward step", []map[string]any{
+			{"status": "APPLIED", "changed_at": "2026-09-01"},
+			{"status": "OFFER", "changed_at": "2026-09-05"},
+			{"status": "INTERVIEWING", "changed_at": "2026-09-06"},
+		}},
+		{"dates out of order", []map[string]any{
+			{"status": "APPLIED", "changed_at": "2026-09-05"},
+			{"status": "REJECTED", "changed_at": "2026-09-01"},
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := doJSON(t, harness.router, http.MethodPost, "/api/applications/backfill", base(tc.history))
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+			}
+		})
+	}
+
+	// Nothing invalid should have been written.
+	w := doJSON(t, harness.router, http.MethodGet, "/api/applications", nil)
+	if strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Fatalf("expected no applications to be stored, got %s", w.Body.String())
 	}
 }
 

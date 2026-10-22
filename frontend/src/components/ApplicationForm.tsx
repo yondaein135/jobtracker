@@ -1,10 +1,16 @@
-import { Bookmark, Building2, Calendar, FileText, Link2, Loader2, MapPin, Send, StickyNote, X } from 'lucide-react'
+import { Bookmark, Building2, FileText, Link2, Loader2, MapPin, Send, StickyNote, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
-import { toLocalDateInputValue, toLocalDateString } from '../lib/format'
 import type { Application, ApplicationDetail, InitialStatus } from '../types'
+import { initialTimeline, timelineErrors, toBackfillEvents, type TimelineStep } from '../lib/timeline'
+import BackfillTimeline from './BackfillTimeline'
 
-export type FormMode = { kind: 'create' } | { kind: 'edit'; app: Application }
+/**
+ * create:   a new application as of today.
+ * backfill: an application that already happened, entered with its dated status history.
+ * edit:     change details of an existing application (status history is not editable here).
+ */
+export type FormMode = { kind: 'create' } | { kind: 'backfill' } | { kind: 'edit'; app: Application }
 
 interface ApplicationFormProps {
   mode: FormMode
@@ -21,7 +27,6 @@ interface FormState {
   job_url: string
   notes: string
   job_description: string
-  applied_on: string
 }
 
 const empty: FormState = {
@@ -33,7 +38,6 @@ const empty: FormState = {
   job_url: '',
   notes: '',
   job_description: '',
-  applied_on: toLocalDateInputValue(),
 }
 
 function isValidUrl(v: string) {
@@ -49,6 +53,7 @@ function isValidUrl(v: string) {
 /** Clinical horizon record entry/edit modal with elegant sans-serif typography. */
 export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationFormProps) {
   const isEdit = mode.kind === 'edit'
+  const isBackfill = mode.kind === 'backfill'
   const [form, setForm] = useState<FormState>(() =>
     mode.kind === 'edit'
       ? {
@@ -60,11 +65,10 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
           job_url: mode.app.job_url,
           notes: mode.app.notes,
           job_description: mode.app.job_description || '',
-          applied_on: toLocalDateString(mode.app.applied_on),
         }
       : empty,
   )
-  const [appliedOnModified, setAppliedOnModified] = useState(false)
+  const [timeline, setTimeline] = useState<TimelineStep[]>(initialTimeline)
   const [touched, setTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -92,7 +96,8 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
     role_title: !form.role_title.trim() ? 'Role title is required' : '',
     job_url: !isValidUrl(form.job_url.trim()) ? 'Must be a valid http(s) URL' : '',
   }
-  const hasErrors = Object.values(errors).some(Boolean)
+  const hasErrors =
+    Object.values(errors).some(Boolean) || (isBackfill && timelineErrors(timeline).some(Boolean))
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -108,17 +113,14 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
       job_url: form.job_url.trim(),
       notes: form.notes.trim(),
       job_description: form.job_description.trim(),
-      ...(mode.kind === 'edit'
-        ? { applied_on: form.applied_on ? form.applied_on : undefined }
-        : appliedOnModified && form.applied_on
-          ? { applied_on: form.applied_on }
-          : {}),
     }
     try {
       const saved =
         mode.kind === 'edit'
           ? await api.updateApplication(mode.app.id, payload)
-          : await api.createApplication({ ...payload, initial_status: form.initial_status })
+          : mode.kind === 'backfill'
+            ? await api.backfillApplication({ ...payload, history: toBackfillEvents(timeline) })
+            : await api.createApplication({ ...payload, initial_status: form.initial_status })
       onSaved(saved, !isEdit)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to commit record')
@@ -155,7 +157,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
         <header className="mb-4">
           <div className="flex items-center justify-between">
             <span className="font-sans text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              {isEdit ? 'Edit' : 'New'}
+              {isEdit ? 'Edit' : isBackfill ? 'Backfill' : 'New'}
             </span>
             <button
               type="button"
@@ -167,7 +169,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
             </button>
           </div>
           <h2 id={`${uid}-title`} className="mt-1 font-display text-2xl font-light tracking-wide text-slate-900 uppercase">
-            {isEdit ? mode.app.company_name : 'Add application'}
+            {isEdit ? mode.app.company_name : isBackfill ? 'Fill past application' : 'Add application'}
           </h2>
           <div className="tapered-datum-rule" />
         </header>
@@ -222,8 +224,11 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
             </div>
           </div>
 
+          {/* Past status history (backfill only) */}
+          {isBackfill && <BackfillTimeline steps={timeline} onChange={setTimeline} showErrors={touched} />}
+
           {/* Initial status (creation only) */}
-          {!isEdit && (
+          {mode.kind === 'create' && (
             <div>
               <span className="field-label">Status</span>
               <div className="grid grid-cols-2 gap-2">
@@ -257,30 +262,8 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
             </div>
           )}
 
-          {/* Applied Date & Location */}
+          {/* Location & Salary */}
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor={`${uid}-applied-on`} className="field-label flex items-center justify-between">
-                <span>Applied Date</span>
-                {!isEdit && !appliedOnModified && (
-                  <span className="text-[10px] font-normal text-slate-400">DEFAULT: TODAY</span>
-                )}
-              </label>
-              <div className="relative">
-                <Calendar className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
-                <input
-                  id={`${uid}-applied-on`}
-                  type="date"
-                  value={form.applied_on}
-                  onChange={(e) => {
-                    set('applied_on', e.target.value)
-                    setAppliedOnModified(true)
-                  }}
-                  className="field-clinical pl-8 font-sans text-xs"
-                />
-              </div>
-            </div>
-
             <div>
               <label htmlFor={`${uid}-location`} className="field-label">
                 Location
@@ -296,10 +279,6 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                 />
               </div>
             </div>
-          </div>
-
-          {/* Salary & Job Posting URL */}
-          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`${uid}-salary`} className="field-label">
                 Salary
@@ -317,27 +296,28 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
                 />
               </div>
             </div>
+          </div>
 
-            <div>
-              <label htmlFor={`${uid}-url`} className="field-label">
-                Posting URL
-              </label>
-              <div className="relative">
-                <Link2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
-                <input
-                  id={`${uid}-url`}
-                  type="url"
-                  value={form.job_url}
-                  onChange={(e) => set('job_url', e.target.value)}
-                  placeholder="https://..."
-                  className="field-clinical pl-8 font-sans text-xs"
-                  aria-invalid={Boolean(showErr('job_url'))}
-                />
-              </div>
-              {showErr('job_url') && (
-                <p className="mt-1 font-sans text-[11px] text-rose-600">{errors.job_url}</p>
-              )}
+          {/* Job Posting URL */}
+          <div>
+            <label htmlFor={`${uid}-url`} className="field-label">
+              Posting URL
+            </label>
+            <div className="relative">
+              <Link2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                id={`${uid}-url`}
+                type="url"
+                value={form.job_url}
+                onChange={(e) => set('job_url', e.target.value)}
+                placeholder="https://..."
+                className="field-clinical pl-8 font-sans text-xs"
+                aria-invalid={Boolean(showErr('job_url'))}
+              />
             </div>
+            {showErr('job_url') && (
+              <p className="mt-1 font-sans text-[11px] text-rose-600">{errors.job_url}</p>
+            )}
           </div>
 
           {/* Job Description */}
@@ -403,7 +383,7 @@ export default function ApplicationForm({ mode, onClose, onSaved }: ApplicationF
               id="form-submit"
             >
               {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
-              <span>{isEdit ? 'Save changes' : 'Add application'}</span>
+              <span>{isEdit ? 'Save changes' : isBackfill ? 'Save past application' : 'Add application'}</span>
             </button>
           </div>
         </footer>

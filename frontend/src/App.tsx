@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, GitFork, LayoutGrid, Plus, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, GitFork, History, LayoutGrid, Plus, X } from 'lucide-react'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { AmbientCanvas } from './components/AmbientCanvas'
 import ApplicationForm, { type FormMode } from './components/ApplicationForm'
@@ -121,6 +121,17 @@ export default function App() {
                   <span>Pipeline</span>
                 </button>
               </nav>
+
+              {/* Secondary action: enter an application that already happened */}
+              <button
+                type="button"
+                id="header-backfill-application"
+                onClick={() => setFormMode({ kind: 'backfill' })}
+                className="btn-clinical btn-clinical-ghost bg-white/60 backdrop-blur-xs"
+              >
+                <History className="size-3.5" />
+                <span>Fill past application</span>
+              </button>
 
               {/* Primary Action Button */}
               <button

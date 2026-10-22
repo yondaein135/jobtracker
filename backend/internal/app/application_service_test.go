@@ -15,7 +15,7 @@ import (
 type mockAppRepo struct {
 	listFn      func(ctx context.Context, filter ports.ListApplicationsFilter) ([]domain.Application, error)
 	getByIDFn   func(ctx context.Context, id int64) (domain.ApplicationDetail, error)
-	createFn    func(ctx context.Context, a domain.Application, s domain.Status, applied, changed time.Time) (domain.ApplicationDetail, error)
+	createFn    func(ctx context.Context, a domain.Application, history []domain.StatusEvent) (domain.ApplicationDetail, error)
 	updateFn    func(ctx context.Context, id int64, cmd ports.UpdateApplicationCommand) (domain.ApplicationDetail, error)
 	deleteFn    func(ctx context.Context, id int64) error
 	addStatusFn func(ctx context.Context, id int64, s domain.Status, notes string, changed time.Time) (domain.ApplicationDetail, error)
@@ -35,9 +35,9 @@ func (m *mockAppRepo) GetByID(ctx context.Context, id int64) (domain.Application
 	return domain.ApplicationDetail{}, nil
 }
 
-func (m *mockAppRepo) Create(ctx context.Context, a domain.Application, s domain.Status, applied, changed time.Time) (domain.ApplicationDetail, error) {
+func (m *mockAppRepo) Create(ctx context.Context, a domain.Application, history []domain.StatusEvent) (domain.ApplicationDetail, error) {
 	if m.createFn != nil {
-		return m.createFn(ctx, a, s, applied, changed)
+		return m.createFn(ctx, a, history)
 	}
 	return domain.ApplicationDetail{Application: a}, nil
 }
@@ -244,5 +244,82 @@ func TestApplicationService_AddStatus_Transitions(t *testing.T) {
 		if !errors.Is(err, domain.ErrInvalidTransition) {
 			t.Errorf("expected errors.Is(err, domain.ErrInvalidTransition), got false")
 		}
+	}
+}
+
+func TestApplicationService_Backfill(t *testing.T) {
+	ctx := context.Background()
+	day := func(d int) time.Time { return time.Date(2026, 9, d, 0, 0, 0, 0, time.UTC) }
+
+	var gotApp domain.Application
+	var gotHistory []domain.StatusEvent
+	svc := app.NewApplicationService(&mockAppRepo{
+		createFn: func(_ context.Context, a domain.Application, h []domain.StatusEvent) (domain.ApplicationDetail, error) {
+			gotApp, gotHistory = a, h
+			return domain.ApplicationDetail{Application: a}, nil
+		},
+	})
+
+	_, err := svc.Backfill(ctx, ports.BackfillApplicationCommand{
+		CompanyName: "  Acme ",
+		RoleTitle:   "Engineer",
+		History: []ports.BackfillEvent{
+			{Status: "saved", ChangedAt: day(1)},
+			{Status: domain.StatusApplied, ChangedAt: day(3), Notes: " sent CV "},
+			{Status: domain.StatusRejected, ChangedAt: day(20)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotApp.CompanyName != "Acme" {
+		t.Errorf("expected trimmed company name, got %q", gotApp.CompanyName)
+	}
+	if !gotApp.AppliedOn.Equal(day(3)) {
+		t.Errorf("expected applied_on to be the APPLIED step date, got %v", gotApp.AppliedOn)
+	}
+	if gotApp.CurrentStatus != domain.StatusRejected {
+		t.Errorf("expected current status REJECTED, got %s", gotApp.CurrentStatus)
+	}
+	if len(gotHistory) != 3 || gotHistory[0].Status != domain.StatusSaved || gotHistory[1].Notes != "sent CV" {
+		t.Errorf("unexpected history passed to repo: %+v", gotHistory)
+	}
+
+	// Invalid timelines never reach the repo.
+	gotHistory = nil
+	_, err = svc.Backfill(ctx, ports.BackfillApplicationCommand{
+		CompanyName: "Acme",
+		RoleTitle:   "Engineer",
+		History: []ports.BackfillEvent{
+			{Status: domain.StatusApplied, ChangedAt: day(5)},
+			{Status: domain.StatusInterviewing, ChangedAt: day(2)},
+		},
+	})
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("expected validation error for out-of-order dates, got %v", err)
+	}
+	if gotHistory != nil {
+		t.Fatal("repo should not be called for an invalid timeline")
+	}
+}
+
+func TestApplicationService_Create_UsesNow(t *testing.T) {
+	var gotHistory []domain.StatusEvent
+	svc := app.NewApplicationService(&mockAppRepo{
+		createFn: func(_ context.Context, a domain.Application, h []domain.StatusEvent) (domain.ApplicationDetail, error) {
+			gotHistory = h
+			return domain.ApplicationDetail{Application: a}, nil
+		},
+	})
+	before := time.Now().UTC()
+	_, err := svc.Create(context.Background(), ports.CreateApplicationCommand{CompanyName: "Acme", RoleTitle: "Engineer"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(gotHistory) != 1 || gotHistory[0].Status != domain.StatusApplied {
+		t.Fatalf("expected a single APPLIED event, got %+v", gotHistory)
+	}
+	if gotHistory[0].ChangedAt.Before(before) {
+		t.Errorf("expected initial event at current time, got %v", gotHistory[0].ChangedAt)
 	}
 }

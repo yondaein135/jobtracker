@@ -1,6 +1,7 @@
 import type {
   Application,
   ApplicationDetail,
+  BackfillApplicationInput,
   CreateApplicationInput,
   GraphAnalytics,
   ListFilters,
@@ -70,6 +71,10 @@ export const api = {
 
   createApplication(input: CreateApplicationInput) {
     return request<ApplicationDetail>('/applications', { method: 'POST', body: json(input) })
+  },
+
+  backfillApplication(input: BackfillApplicationInput) {
+    return request<ApplicationDetail>('/applications/backfill', { method: 'POST', body: json(input) })
   },
 
   updateApplication(id: number, input: UpdateApplicationInput) {

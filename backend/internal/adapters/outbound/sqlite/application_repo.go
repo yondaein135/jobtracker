@@ -96,21 +96,23 @@ func (r *ApplicationRepository) GetByID(ctx context.Context, id int64) (domain.A
 	return r.loadDetail(ctx, id)
 }
 
-// Create inserts a new application and its initial status history entry atomically.
-func (r *ApplicationRepository) Create(ctx context.Context, app domain.Application, initialStatus domain.Status, appliedOn time.Time, changedAt time.Time) (domain.ApplicationDetail, error) {
+// Create inserts a new application and its status history atomically.
+func (r *ApplicationRepository) Create(ctx context.Context, app domain.Application, history []domain.StatusEvent) (domain.ApplicationDetail, error) {
+	if len(history) == 0 {
+		return domain.ApplicationDetail{}, domain.NewValidationError("history must contain at least one status")
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return domain.ApplicationDetail{}, fmt.Errorf("begin create tx: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	appliedOnStr := appliedOn.UTC().Format(dbTimeLayout)
-	initialChangedAtStr := changedAt.UTC().Format(dbTimeLayout)
-
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO applications (company_name, role_title, location, job_url, salary_range, notes, job_description, applied_on)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		app.CompanyName, app.RoleTitle, app.Location, app.JobURL, app.SalaryRange, app.Notes, app.JobDescription, appliedOnStr)
+		app.CompanyName, app.RoleTitle, app.Location, app.JobURL, app.SalaryRange, app.Notes, app.JobDescription,
+		app.AppliedOn.UTC().Format(dbTimeLayout))
 	if err != nil {
 		return domain.ApplicationDetail{}, fmt.Errorf("insert application: %w", err)
 	}
@@ -119,11 +121,14 @@ func (r *ApplicationRepository) Create(ctx context.Context, app domain.Applicati
 		return domain.ApplicationDetail{}, fmt.Errorf("last insert id: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO application_status_history (application_id, status, notes, changed_at)
-		VALUES (?, ?, ?, ?)`,
-		id, initialStatus, "Application created", initialChangedAtStr); err != nil {
-		return domain.ApplicationDetail{}, fmt.Errorf("insert initial status: %w", err)
+	// Inserted oldest first, so the id tiebreak keeps same-second events in order.
+	for i, e := range history {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO application_status_history (application_id, status, notes, changed_at)
+			VALUES (?, ?, ?, ?)`,
+			id, e.Status, e.Notes, e.ChangedAt.UTC().Format(dbTimeLayout)); err != nil {
+			return domain.ApplicationDetail{}, fmt.Errorf("insert status %d: %w", i, err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -147,12 +152,6 @@ func (r *ApplicationRepository) Update(ctx context.Context, id int64, cmd ports.
 		{"salary_range", cmd.SalaryRange},
 		{"notes", cmd.Notes},
 		{"job_description", cmd.JobDescription},
-	}
-
-	var formattedAppliedOn string
-	if cmd.AppliedOn != nil {
-		formattedAppliedOn = cmd.AppliedOn.UTC().Format(dbTimeLayout)
-		cols = append(cols, col{"applied_on", &formattedAppliedOn})
 	}
 
 	sets := make([]string, 0, len(cols))

@@ -8,15 +8,34 @@ import (
 
 // CreateApplicationRequest is the payload for POST /api/applications.
 type CreateApplicationRequest struct {
-	CompanyName    string  `json:"company_name"`
-	RoleTitle      string  `json:"role_title"`
-	Location       string  `json:"location"`
-	JobURL         string  `json:"job_url"`
-	SalaryRange    string  `json:"salary_range"`
-	Notes          string  `json:"notes"`
-	JobDescription string  `json:"job_description"`
-	InitialStatus  string  `json:"initial_status"`
-	AppliedOn      *string `json:"applied_on,omitempty"`
+	CompanyName    string `json:"company_name"`
+	RoleTitle      string `json:"role_title"`
+	Location       string `json:"location"`
+	JobURL         string `json:"job_url"`
+	SalaryRange    string `json:"salary_range"`
+	Notes          string `json:"notes"`
+	JobDescription string `json:"job_description"`
+	InitialStatus  string `json:"initial_status"`
+}
+
+// BackfillApplicationRequest is the payload for POST /api/applications/backfill.
+// History lists past status changes, oldest first.
+type BackfillApplicationRequest struct {
+	CompanyName    string                 `json:"company_name"`
+	RoleTitle      string                 `json:"role_title"`
+	Location       string                 `json:"location"`
+	JobURL         string                 `json:"job_url"`
+	SalaryRange    string                 `json:"salary_range"`
+	Notes          string                 `json:"notes"`
+	JobDescription string                 `json:"job_description"`
+	History        []BackfillEventRequest `json:"history"`
+}
+
+// BackfillEventRequest is one past status change in a backfill request.
+type BackfillEventRequest struct {
+	Status    string `json:"status"`
+	Notes     string `json:"notes"`
+	ChangedAt string `json:"changed_at"`
 }
 
 // UpdateApplicationRequest is the payload for PATCH /api/applications/{id}.
@@ -28,14 +47,13 @@ type UpdateApplicationRequest struct {
 	SalaryRange    *string `json:"salary_range"`
 	Notes          *string `json:"notes"`
 	JobDescription *string `json:"job_description"`
-	AppliedOn      *string `json:"applied_on,omitempty"`
 }
 
 // StatusChangeRequest is the payload for POST /api/applications/{id}/status.
+// The change is recorded at the current time.
 type StatusChangeRequest struct {
-	Status    string `json:"status"`
-	Notes     string `json:"notes"`
-	ChangedAt string `json:"changed_at"`
+	Status string `json:"status"`
+	Notes  string `json:"notes"`
 }
 
 // ApplicationResponse is the JSON representation of an application.

@@ -166,18 +166,29 @@ export interface CreateApplicationInput {
   job_url?: string
   notes?: string
   job_description?: string
-  applied_on?: string
+}
+
+/** A past status change for a backfilled application. */
+export interface BackfillEventInput {
+  status: Status
+  /** ISO-8601 timestamp; must not be in the future or before the previous step. */
+  changed_at: string
+  notes?: string
+}
+
+/** An application that already happened, with its full status history (oldest first). */
+export interface BackfillApplicationInput extends Omit<CreateApplicationInput, 'initial_status'> {
+  history: BackfillEventInput[]
 }
 
 export type UpdateApplicationInput = Partial<
-  Pick<Application, 'company_name' | 'role_title' | 'location' | 'job_url' | 'salary_range' | 'notes' | 'job_description' | 'applied_on'>
+  Pick<Application, 'company_name' | 'role_title' | 'location' | 'job_url' | 'salary_range' | 'notes' | 'job_description'>
 >
 
+/** A status change recorded at the current time. */
 export interface StatusChangeInput {
   status: Status
   notes?: string
-  /** Optional ISO-8601 timestamp; defaults to now on the server. */
-  changed_at?: string
 }
 
 export interface ListFilters {

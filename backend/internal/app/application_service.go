@@ -44,39 +44,9 @@ func (s *ApplicationService) GetByID(ctx context.Context, id int64) (domain.Appl
 	return s.repo.GetByID(ctx, id)
 }
 
-// Create creates a new job application and logs its initial status event.
+// Create records a new job application as of now, with a single initial status
+// of SAVED or APPLIED. Past applications go through Backfill instead.
 func (s *ApplicationService) Create(ctx context.Context, cmd ports.CreateApplicationCommand) (domain.ApplicationDetail, error) {
-	cmd.CompanyName = strings.TrimSpace(cmd.CompanyName)
-	cmd.RoleTitle = strings.TrimSpace(cmd.RoleTitle)
-	cmd.Location = strings.TrimSpace(cmd.Location)
-	cmd.JobURL = strings.TrimSpace(cmd.JobURL)
-	cmd.SalaryRange = strings.TrimSpace(cmd.SalaryRange)
-	cmd.Notes = strings.TrimSpace(cmd.Notes)
-	cmd.JobDescription = strings.TrimSpace(cmd.JobDescription)
-
-	if cmd.InitialStatus == "" {
-		cmd.InitialStatus = domain.StatusApplied
-	}
-
-	if err := validateFields(&cmd.CompanyName, &cmd.RoleTitle, &cmd.Location, &cmd.JobURL, &cmd.SalaryRange, &cmd.Notes, &cmd.JobDescription, true); err != nil {
-		return domain.ApplicationDetail{}, err
-	}
-
-	if cmd.InitialStatus != domain.StatusSaved && cmd.InitialStatus != domain.StatusApplied {
-		return domain.ApplicationDetail{}, domain.NewValidationError("initial_status must be SAVED or APPLIED")
-	}
-
-	now := time.Now().UTC()
-	appliedOn := now
-	if cmd.AppliedOn != nil {
-		appliedOn = cmd.AppliedOn.UTC()
-	}
-
-	initialChangedAt := now
-	if cmd.InitialStatus == domain.StatusApplied {
-		initialChangedAt = appliedOn
-	}
-
 	app := domain.Application{
 		CompanyName:    cmd.CompanyName,
 		RoleTitle:      cmd.RoleTitle,
@@ -85,12 +55,74 @@ func (s *ApplicationService) Create(ctx context.Context, cmd ports.CreateApplica
 		SalaryRange:    cmd.SalaryRange,
 		Notes:          cmd.Notes,
 		JobDescription: cmd.JobDescription,
-		AppliedOn:      appliedOn,
-		CreatedAt:      now,
-		CurrentStatus:  cmd.InitialStatus,
+	}
+	if err := normalizeAndValidate(&app); err != nil {
+		return domain.ApplicationDetail{}, err
 	}
 
-	return s.repo.Create(ctx, app, cmd.InitialStatus, appliedOn, initialChangedAt)
+	if cmd.InitialStatus == "" {
+		cmd.InitialStatus = domain.StatusApplied
+	}
+	if cmd.InitialStatus != domain.StatusSaved && cmd.InitialStatus != domain.StatusApplied {
+		return domain.ApplicationDetail{}, domain.NewValidationError("initial_status must be SAVED or APPLIED")
+	}
+
+	now := time.Now().UTC()
+	app.AppliedOn = now
+	app.CreatedAt = now
+	app.CurrentStatus = cmd.InitialStatus
+
+	history := []domain.StatusEvent{{Status: cmd.InitialStatus, Notes: "Application created", ChangedAt: now}}
+	return s.repo.Create(ctx, app, history)
+}
+
+// Backfill records an application that already happened, with its full dated
+// status history. The history must be a valid forward path and cannot be in the future.
+func (s *ApplicationService) Backfill(ctx context.Context, cmd ports.BackfillApplicationCommand) (domain.ApplicationDetail, error) {
+	app := domain.Application{
+		CompanyName:    cmd.CompanyName,
+		RoleTitle:      cmd.RoleTitle,
+		Location:       cmd.Location,
+		JobURL:         cmd.JobURL,
+		SalaryRange:    cmd.SalaryRange,
+		Notes:          cmd.Notes,
+		JobDescription: cmd.JobDescription,
+	}
+	if err := normalizeAndValidate(&app); err != nil {
+		return domain.ApplicationDetail{}, err
+	}
+
+	history := make([]domain.StatusEvent, 0, len(cmd.History))
+	for i, e := range cmd.History {
+		notes := strings.TrimSpace(e.Notes)
+		if len(notes) > maxNotesLength {
+			return domain.ApplicationDetail{}, domain.NewValidationError(fmt.Sprintf("history[%d]: notes too long", i))
+		}
+		history = append(history, domain.StatusEvent{
+			Status:    domain.Status(strings.ToUpper(strings.TrimSpace(string(e.Status)))),
+			Notes:     notes,
+			ChangedAt: e.ChangedAt.UTC(),
+		})
+	}
+
+	now := time.Now().UTC()
+	if err := domain.ValidateTimeline(history, now); err != nil {
+		return domain.ApplicationDetail{}, err
+	}
+
+	// applied_on is when the APPLIED step happened. A history that never
+	// reached APPLIED falls back to its first step, matching Create for SAVED.
+	app.AppliedOn = history[0].ChangedAt
+	for _, e := range history {
+		if e.Status == domain.StatusApplied {
+			app.AppliedOn = e.ChangedAt
+			break
+		}
+	}
+	app.CreatedAt = now
+	app.CurrentStatus = history[len(history)-1].Status
+
+	return s.repo.Create(ctx, app, history)
 }
 
 // Update partially updates fields on an existing job application.
@@ -141,10 +173,6 @@ func (s *ApplicationService) Update(ctx context.Context, id int64, cmd ports.Upd
 		v := strings.TrimSpace(*cmd.JobDescription)
 		cmd.JobDescription = &v
 	}
-	if cmd.AppliedOn != nil {
-		hasField = true
-	}
-
 	if !hasField {
 		return domain.ApplicationDetail{}, domain.NewValidationError("no updatable fields provided")
 	}
@@ -188,11 +216,6 @@ func (s *ApplicationService) AddStatus(ctx context.Context, id int64, cmd ports.
 		return domain.ApplicationDetail{}, domain.NewValidationError("notes too long")
 	}
 
-	changedAt := time.Now().UTC()
-	if cmd.ChangedAt != nil {
-		changedAt = cmd.ChangedAt.UTC()
-	}
-
 	detail, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return domain.ApplicationDetail{}, err
@@ -205,7 +228,15 @@ func (s *ApplicationService) AddStatus(ctx context.Context, id int64, cmd ports.
 		}
 	}
 
-	return s.repo.AddStatus(ctx, id, cmd.Status, cmd.Notes, changedAt)
+	return s.repo.AddStatus(ctx, id, cmd.Status, cmd.Notes, time.Now().UTC())
+}
+
+// normalizeAndValidate trims the application's text fields and checks them.
+func normalizeAndValidate(a *domain.Application) error {
+	for _, f := range []*string{&a.CompanyName, &a.RoleTitle, &a.Location, &a.JobURL, &a.SalaryRange, &a.Notes, &a.JobDescription} {
+		*f = strings.TrimSpace(*f)
+	}
+	return validateFields(&a.CompanyName, &a.RoleTitle, &a.Location, &a.JobURL, &a.SalaryRange, &a.Notes, &a.JobDescription, true)
 }
 
 func validateFields(company, role, location, jobURL, salary, notes, jobDesc *string, requireCore bool) error {

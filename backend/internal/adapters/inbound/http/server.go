@@ -13,6 +13,7 @@ func NewRouter(h *Handler, allowedOrigins []string, staticDir string, logger *sl
 
 	apiMux.HandleFunc("GET /api/applications", h.ListApplications)
 	apiMux.HandleFunc("POST /api/applications", h.CreateApplication)
+	apiMux.HandleFunc("POST /api/applications/backfill", h.BackfillApplication)
 	apiMux.HandleFunc("GET /api/applications/{id}", h.GetApplication)
 	apiMux.HandleFunc("PATCH /api/applications/{id}", h.UpdateApplication)
 	apiMux.HandleFunc("DELETE /api/applications/{id}", h.DeleteApplication)

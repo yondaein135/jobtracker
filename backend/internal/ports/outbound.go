@@ -11,7 +11,7 @@ import (
 type ApplicationRepository interface {
 	List(ctx context.Context, filter ListApplicationsFilter) ([]domain.Application, error)
 	GetByID(ctx context.Context, id int64) (domain.ApplicationDetail, error)
-	Create(ctx context.Context, app domain.Application, initialStatus domain.Status, appliedOn time.Time, changedAt time.Time) (domain.ApplicationDetail, error)
+	Create(ctx context.Context, app domain.Application, history []domain.StatusEvent) (domain.ApplicationDetail, error)
 	Update(ctx context.Context, id int64, cmd UpdateApplicationCommand) (domain.ApplicationDetail, error)
 	Delete(ctx context.Context, id int64) error
 	AddStatus(ctx context.Context, id int64, status domain.Status, notes string, changedAt time.Time) (domain.ApplicationDetail, error)

@@ -1,11 +1,11 @@
 package http
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"job-tracker/backend/internal/domain"
 	"job-tracker/backend/internal/ports"
@@ -68,16 +68,6 @@ func (h *Handler) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var appliedOn *time.Time
-	if req.AppliedOn != nil && strings.TrimSpace(*req.AppliedOn) != "" {
-		t, err := parseTimestamp(*req.AppliedOn)
-		if err != nil {
-			writeProblem(w, r, http.StatusBadRequest, "Bad Request", "applied_on must be an ISO-8601 date or datetime")
-			return
-		}
-		appliedOn = &t
-	}
-
 	cmd := ports.CreateApplicationCommand{
 		CompanyName:    req.CompanyName,
 		RoleTitle:      req.RoleTitle,
@@ -87,10 +77,51 @@ func (h *Handler) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		Notes:          req.Notes,
 		JobDescription: req.JobDescription,
 		InitialStatus:  domain.Status(strings.ToUpper(strings.TrimSpace(req.InitialStatus))),
-		AppliedOn:      appliedOn,
 	}
 
 	detail, err := h.appService.Create(r.Context(), cmd)
+	if err != nil {
+		handleDomainError(w, r, h.logger, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toApplicationDetailResponse(detail))
+}
+
+// BackfillApplication handles POST /api/applications/backfill.
+func (h *Handler) BackfillApplication(w http.ResponseWriter, r *http.Request) {
+	var req BackfillApplicationRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	history := make([]ports.BackfillEvent, 0, len(req.History))
+	for i, e := range req.History {
+		t, err := parseTimestamp(e.ChangedAt)
+		if err != nil {
+			writeProblem(w, r, http.StatusBadRequest, "Bad Request",
+				fmt.Sprintf("history[%d].changed_at must be an ISO-8601 date or datetime", i))
+			return
+		}
+		history = append(history, ports.BackfillEvent{
+			Status:    domain.Status(e.Status),
+			Notes:     e.Notes,
+			ChangedAt: t,
+		})
+	}
+
+	cmd := ports.BackfillApplicationCommand{
+		CompanyName:    req.CompanyName,
+		RoleTitle:      req.RoleTitle,
+		Location:       req.Location,
+		JobURL:         req.JobURL,
+		SalaryRange:    req.SalaryRange,
+		Notes:          req.Notes,
+		JobDescription: req.JobDescription,
+		History:        history,
+	}
+
+	detail, err := h.appService.Backfill(r.Context(), cmd)
 	if err != nil {
 		handleDomainError(w, r, h.logger, err)
 		return
@@ -127,21 +158,6 @@ func (h *Handler) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var appliedOn *time.Time
-	if req.AppliedOn != nil {
-		v := strings.TrimSpace(*req.AppliedOn)
-		if v == "" {
-			writeProblem(w, r, http.StatusBadRequest, "Bad Request", "applied_on cannot be empty")
-			return
-		}
-		t, err := parseTimestamp(v)
-		if err != nil {
-			writeProblem(w, r, http.StatusBadRequest, "Bad Request", "applied_on must be an ISO-8601 date or datetime")
-			return
-		}
-		appliedOn = &t
-	}
-
 	cmd := ports.UpdateApplicationCommand{
 		CompanyName:    req.CompanyName,
 		RoleTitle:      req.RoleTitle,
@@ -150,7 +166,6 @@ func (h *Handler) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		SalaryRange:    req.SalaryRange,
 		Notes:          req.Notes,
 		JobDescription: req.JobDescription,
-		AppliedOn:      appliedOn,
 	}
 
 	detail, err := h.appService.Update(r.Context(), id, cmd)
@@ -189,20 +204,9 @@ func (h *Handler) AddStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var changedAt *time.Time
-	if s := strings.TrimSpace(req.ChangedAt); s != "" {
-		t, err := parseTimestamp(s)
-		if err != nil {
-			writeProblem(w, r, http.StatusBadRequest, "Bad Request", "changed_at must be an ISO-8601 date or datetime")
-			return
-		}
-		changedAt = &t
-	}
-
 	cmd := ports.AddStatusCommand{
-		Status:    domain.Status(strings.ToUpper(strings.TrimSpace(req.Status))),
-		Notes:     req.Notes,
-		ChangedAt: changedAt,
+		Status: domain.Status(strings.ToUpper(strings.TrimSpace(req.Status))),
+		Notes:  req.Notes,
 	}
 
 	detail, err := h.appService.AddStatus(r.Context(), id, cmd)
